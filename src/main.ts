@@ -38,22 +38,6 @@ function getHistoryByID(id: string) {
     return undefined
   }
 }
-function setCurrentHistory(history: IFHistory) {
-  const rawData = localStorage.getItem('history');
-  if (!rawData) {
-    localStorage.setItem('history', JSON.stringify({ [currentIFThemeID]: history }));
-    return;
-  }
-  try {
-    const ifHistorys: IFHistorys = JSON.parse(rawData);
-    ifHistorys[currentIFThemeID] = history;
-    localStorage.setItem('history', JSON.stringify(ifHistorys));
-    return
-  } catch (e) {
-    localStorage.setItem('history', JSON.stringify({ [currentIFThemeID]: history }));
-    return
-  }
-}
 
 function getHistorys(): IFHistorys | void {
   const rawData = localStorage.getItem('history');
@@ -64,6 +48,13 @@ function getHistorys(): IFHistorys | void {
     localStorage.removeItem('history');
     return
   }
+}
+
+function saveHistory(history: IFHistory) {
+  let historys = getHistorys();
+  if (historys) { historys[history.id] = history; }
+  else { historys = { [history.id]: history }; }
+  localStorage.setItem('history', JSON.stringify(historys));
 }
 
 function createWelcomeScreen() {
@@ -126,10 +117,7 @@ function createHistoryItem(history: IFHistory) {
     endBtn.onclick = () => {
       if (history.he) { delete history.he; }
       else { history.he = true; }
-      let historys = getHistorys();
-      if (historys) { historys![history.id] = history; }
-      else { historys = { [history.id]: history }; }
-      localStorage.setItem('history', JSON.stringify(historys));
+      saveHistory(history);
       document.body.removeChild(backdrop);
     }
     const colorBtn = document.createElement('div');
@@ -147,13 +135,12 @@ function createHistoryItem(history: IFHistory) {
       generateColorsByStory(story).then(colors => {
         if (colors.length != 5) return;
         history.colors = colors;
-        let historys = getHistorys();
-        if (historys) { historys![history.id] = history; }
-        else { historys = { [history.id]: history }; }
-        localStorage.setItem('history', JSON.stringify(historys));
-        themeVars.forEach((varName) => {
-          document.documentElement.style.removeProperty(varName);
-        });
+        saveHistory(history);
+        if (currentIFThemeID === history.id) {
+          themeVars.forEach((varName, index) => {
+            document.documentElement.style.setProperty(varName, history.colors[index]);
+          });
+        }
       }).finally(() => { generateColorsByStoryFlag = false });
       document.body.removeChild(backdrop);
     }
@@ -333,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         history.innerHTML = contentArea.innerHTML + ifContent.innerHTML;
       }
-      setCurrentHistory(history);
+      saveHistory(history);
     } else if (rendering) {
       selectArea.innerHTML = '';
       const optionItem = document.createElement('div');
@@ -472,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ifContent.remove();
     history.messages.length = contentArea.children.length * 2 - 1;
-    setCurrentHistory(history);
+    saveHistory(history);
     console.log(history.messages);
     const options = lastOptions();
     if (options) renderOptions(options)
