@@ -1,0 +1,183 @@
+@import url("./base.css");
+.backdrop {
+  --modal-content-line-height: 44px;
+  --modal-content-button-width: 66px;
+  --gap-x1: 8px;
+  --gap-x2: 16px;
+  --gap-x3: 24px;
+  --gap-half: 4px;
+  --error-color: #dc3545;
+  --radius-tiny: 4px;
+  --radius-small: 6px;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: var(--hover-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal {
+  position: absolute;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  width: 80vw;
+  max-width: 400px;
+  border-radius: var(--radius-small);
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.modal-content strong,
+.modal-content span {
+  display: block;
+  margin-bottom: var(--gap-x2);
+  color: var(--text-color);
+}
+
+.modal-item {
+  position: relative;
+}
+
+.modal-item label {
+  display: block;
+  margin-bottom: var(--gap-x1);
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text-color);
+}
+
+.modal-item input,
+.modal-item select {
+  width: 100%;
+  margin-bottom: var(--gap-x3);
+  height: var(--modal-content-line-height);
+  border: var(--default-border);
+  border-radius: var(--radius-tiny);
+  font-size: 1em;
+  background-color: var(--sidebar-bg-color);
+  color: var(--text-color);
+  transition: all 0.3s;
+}
+.modal-item input::placeholder,
+.modal-item select::placeholder {
+  color: var(--text-color-transparent);
+}
+
+.modal-item input:focus,
+.modal-item select:focus {
+  outline: none;
+  border-color: var(--theme-color);
+  box-shadow: var(--default-shadow);
+}
+
+.modal-item input.error:focus,
+.modal-item select.error:focus {
+  border-color: var(--error-color);
+}
+
+.modal-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap-x2);
+  justify-content: flex-end;
+}
+
+.modal-button {
+  height: var(--modal-content-line-height);
+  width: var(--modal-content-button-width);
+  border: none;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95em;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.1em;
+  transition: transform 0.2s ease;
+}
+.modal-button.confirm {
+  background-color: var(--theme-color);
+  color: white;
+}
+.modal-button.cancel {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.modal-button.delete {
+  background-color: #ef4444;
+  color: white;
+}
+
+.modal-button:hover {
+  transform: translateY(-2px);
+}
+
+.error-message {
+  position: absolute;
+  left: 0;
+  bottom: var(--gap-half);
+  padding: 0;
+  margin: 0;
+  color: var(--error-color);
+  font-size: 12px;
+  pointer-events: none; /* 防止遮挡点击事件 */
+}
+
+.card-icon {
+  font-size: 20px;
+  margin-right: 12px;
+  padding-top: 2px;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-color);
+  margin-bottom: 4px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--text-color-transparent);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.card-meta {
+  font-size: 12px;
+  color: var(--theme-color);
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  opacity: 0.8;
+}
+.option-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  border: var(--default-border);
+  border-radius: var(--radius-small);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  background: var(--bg-color);
+  margin-bottom: 12px;
+}
+
+.option-card:hover {
+  transform: translateY(-2px);
+  animation: pulse 2s infinite ease-in-out;
+}

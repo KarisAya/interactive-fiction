@@ -21,20 +21,28 @@
           IF 互动小说
         </div>
         <div class="header-actions">
-          <i class="fa-solid fa-magnifying-glass" id="sidebarSearchBtn"></i>
-          <i class="fa-solid fa-bars" id="sidebarHiddenBtn"></i>
+          <button class="sidebar-button" id="sidebarSearchBtn" title="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+          <button class="sidebar-button" id="sidebarHiddenBtn" title="hidden">
+            <i class="fa-solid fa-bars"></i>
+          </button>
         </div>
       </div>
       <div class="sidebar" id="sidebar">
         <div class="sidebar-header-empty"></div>
         <button class="new-fiction-btn" id="newFictionBtn"><i class="fa-solid fa-plus"></i>开启新剧本</button>
         <div class="history-container" id="historyContainer"></div>
-        <div class="user-profile">
-          <div class="avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div>
-          <span class="username">小布尔乔亚</span>
-          <i class="fa-solid fa-ellipsis profile-more"></i>
+        <div class="others" id="others">
+          <div class="others-info">
+            <a href="https://qm.qq.com/q/AnTDkyTrii"><i class="fa-solid fa-at"></i> KarisAya </a>
+            <a href="https://github.com/KarisAya/wish-master"><i class="fa-brands fa-github"></i> GitHub Source </a>
+            <span id="about"><i class="fa-solid fa-copyright"></i> 2026 IF 互动小说</span>
+          </div>
+          <button class="sidebar-button" id="configBtn" title="config">
+            <i class="fa-solid fa-gear"></i>
+          </button>
         </div>
-        <div class="disclaimer">内容由 AI 生成，请仔细甄别</div>
       </div>
       <div class="sidebar-empty" id="sidebarEmpty"></div>
       <main class="main-container" id="mainContainer">

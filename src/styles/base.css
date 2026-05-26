@@ -1,3 +1,25 @@
+@keyframes breathing {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 @property --theme-color {
   syntax: "<color>";
   inherits: true;
@@ -25,14 +47,17 @@
 }
 
 :root {
+  --theme-color-transparent: color-mix(in srgb, var(--theme-color) 60%, transparent);
+  --text-color-transparent: color-mix(in srgb, var(--text-color) 80%, transparent);
   transition:
     --theme-color 0.3s ease,
     --text-color 0.3s ease,
     --bg-color 0.3s ease,
     --sidebar-bg-color 0.3s ease,
     --border-color 0.3s ease;
-  --hover-bg: #00000011;
+  --hover-bg: #00000022;
   --default-border: 1px solid var(--border-color);
+  --default-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -55,4 +80,75 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
+}
+
+.old-text {
+  opacity: 1;
+}
+
+.new-text {
+  opacity: 0;
+}
+.old-text,
+.new-text.loading {
+  position: relative;
+  transition: all 0.6s linear;
+}
+.new-text,
+.old-text.loading {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.6s linear;
+}
+.old-text.loading {
+  animation: erase-old 2s linear forwards;
+}
+.new-text.loading {
+  animation: reveal-new 2s linear forwards;
+}
+
+@keyframes erase-old {
+  0% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  50% {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0;
+  }
+}
+
+@keyframes reveal-new {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  50% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--theme-color);
+  }
+  70% {
+    box-shadow: 0 0 0 4px var(--theme-color-transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
 }

@@ -1,4 +1,4 @@
-@import "./base.css";
+@import url("./base.css");
 
 .sidebar-empty {
   width: 0px;
@@ -21,8 +21,7 @@
 
 .header-actions {
   display: flex;
-  gap: 8px;
-  color: var(--text-main);
+  color: var(--text-color);
 }
 
 .sidebar-header {
@@ -38,7 +37,7 @@
   font-size: 16px;
   position: fixed;
   top: 0;
-  left: calc(-260px + 80px);
+  left: calc(-260px + 96px);
   z-index: 30;
   border-radius: 0 30px 30px 0;
   transition:
@@ -81,7 +80,7 @@
   background: transparent;
   border: var(--default-border);
   border-radius: 20px;
-  color: var(--text-main);
+  color: var(--text-color);
   font-size: 14px;
   cursor: pointer;
   min-width: 220px;
@@ -101,25 +100,32 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-main);
+  color: var(--text-color);
   font-size: 12px;
   gap: 10px;
-}
-
-.history-group-title {
-  font-size: 12px;
-  color: var(--text-main);
-  margin-bottom: 10px;
 }
 
 .history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
+  padding: 6px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+}
+.history-item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 0.5em;
+}
+.history-item .sidebar-button {
+  opacity: 0;
+}
+.history-item:hover .sidebar-button {
+  opacity: 1;
 }
 
 .history-item.active {
@@ -131,32 +137,43 @@
   background-color: var(--hover-bg);
 }
 
-.user-profile {
-  padding: 15px 20px;
+.others {
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
+  border-top: var(--default-border);
+}
+
+.others-info {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  font-size: 12px;
+  color: var(--text-color);
+  align-items: flex-start;
+}
+.others-info a {
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.others-info a:hover,
+#about:hover {
+  background-color: var(--hover-bg);
   cursor: pointer;
 }
 
-.user-profile:hover {
-  background-color: var(--hover-bg);
-}
-
-.avatar img {
+.sidebar-button {
   width: 32px;
   height: 32px;
+  font-size: 16px;
+  color: var(--text-color);
   border-radius: 50%;
-  background: var(--primary-gray);
+  border: 0;
+  background-color: transparent;
 }
-
-.username {
-  flex: 1;
-  font-size: 14px;
-}
-.disclaimer {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-main);
-  margin: 4px;
+.sidebar-button:hover {
+  background-color: var(--hover-bg);
+  cursor: pointer;
 }

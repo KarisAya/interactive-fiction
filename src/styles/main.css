@@ -1,3 +1,5 @@
+@import url("./base.css");
+
 .main-container {
   display: flex;
   flex: 1;
@@ -30,11 +32,16 @@
   justify-content: flex-end;
   color: var(--theme-color);
   min-height: 40vh;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 30px;
 }
 
-.welcome-screen h1 {
-  font-size: 24px;
-  margin-bottom: 30px;
+.welcome-text {
+  position: relative;
+}
+.welcome-text.loading {
+  animation: breathing 2s infinite ease-in-out;
 }
 
 .content-area {
@@ -45,6 +52,7 @@
 }
 .content-area p {
   text-indent: 2em;
+  line-height: 1.5;
 }
 
 .if-image {
@@ -65,7 +73,7 @@
   position: absolute;
   padding: 0;
   margin: 0;
-  bottom: 0;
+  top: 0;
   right: 0;
   background: transparent;
   border: none;
@@ -77,6 +85,36 @@
 .if-content:hover .delete-this {
   opacity: 1;
   pointer-events: auto;
+}
+
+.chapter-title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 24px 0 16px 0;
+  text-align: center;
+}
+
+.chapter-title span {
+  position: relative;
+  font-family: "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--theme-color);
+  padding-bottom: 0.5em;
+  letter-spacing: 0.1em;
+}
+
+.chapter-title span::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--theme-color) 20%, var(--theme-color) 80%, transparent);
+  opacity: 0.7;
 }
 
 .select-area {
@@ -91,7 +129,7 @@
   border: var(--default-border);
   border-radius: 24px;
   padding: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--default-shadow);
   margin-bottom: 8px;
 }
 .select-item p,
@@ -101,11 +139,19 @@
   min-height: 32px;
 }
 
+.select-item.selected {
+  background-color: var(--theme-color);
+  animation: pulse 2s infinite ease-in-out;
+}
+
 .if-content:hover,
-.select-item.selected,
+.select-item:not(.selected):hover,
+.select-back:hover {
+  background-color: var(--hover-bg);
+}
 .select-item:hover,
 .select-back:hover {
-  background: var(--hover-bg);
+  cursor: pointer;
 }
 
 #inputArea.hidden {
