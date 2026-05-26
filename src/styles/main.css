@@ -1,0 +1,185 @@
+.main-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  padding: 2vh 6vw;
+  overflow-y: auto;
+}
+
+.main-container.has-image {
+  --mask-color: color-mix(in srgb, var(--bg-color) 80%, transparent);
+  background-image: linear-gradient(var(--mask-color), var(--mask-color)), var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.content-area,
+.select-area,
+.input-area {
+  width: 100%;
+  max-width: 840px;
+}
+
+.welcome-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--theme-color);
+  min-height: 40vh;
+}
+
+.welcome-screen h1 {
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.content-area {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  margin: 0;
+}
+.content-area p {
+  text-indent: 2em;
+}
+
+.if-image {
+  display: flex;
+  width: 100%;
+  object-fit: cover;
+  border: var(--default-border);
+  border-radius: 6px;
+  justify-content: center;
+}
+
+.if-content {
+  position: relative;
+  padding: 0;
+  margin: 0;
+}
+.delete-this {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  bottom: 0;
+  right: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.if-content:hover .delete-this {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.select-area {
+  padding: 0;
+  margin: 0;
+}
+.input-area,
+.select-item,
+.select-back {
+  display: flex;
+  flex-direction: row;
+  border: var(--default-border);
+  border-radius: 24px;
+  padding: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  margin-bottom: 8px;
+}
+.select-item p,
+.select-back p {
+  padding-top: 6px;
+  padding-left: 12px;
+  min-height: 32px;
+}
+
+.if-content:hover,
+.select-item.selected,
+.select-item:hover,
+.select-back:hover {
+  background: var(--hover-bg);
+}
+
+#inputArea.hidden {
+  display: none;
+}
+
+#messageInput {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  padding-left: 12px;
+  padding-top: 6px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  color: var(--text-color); /* 修改输入字符的颜色 */
+  caret-color: var(--text-color); /* 修改光标的颜色 */
+}
+#messageInput::placeholder {
+  color: var(--text-color);
+}
+
+.content-area p,
+.select-item p,
+.select-back p,
+#messageInput {
+  font-size: 16px;
+  font-family: "Noto Serif CJK SC", "Songti SC", "SimSun", serif, "Segoe UI", "Microsoft YaHei";
+}
+
+.input-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.send-btn {
+  background: var(--theme-color);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-actions,
+.right-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  background: transparent;
+  border: var(--default-border);
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.action-btn:hover {
+  background: var(--hover-bg);
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+}

@@ -1,0 +1,58 @@
+@property --theme-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #4d6bfe;
+}
+@property --text-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #333333;
+}
+@property --bg-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --sidebar-bg-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f9fafb;
+}
+@property --border-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e5e5e5;
+}
+
+:root {
+  transition:
+    --theme-color 0.3s ease,
+    --text-color 0.3s ease,
+    --bg-color 0.3s ease,
+    --sidebar-bg-color 0.3s ease,
+    --border-color 0.3s ease;
+  --hover-bg: #00000011;
+  --default-border: 1px solid var(--border-color);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}

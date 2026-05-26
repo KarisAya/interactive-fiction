@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+      integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IF 互动小说</title>
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="sidebar-header" id="sidebarHeader">
+        <div class="logo-area">
+          <i class="fa-solid fa-book"></i>
+          IF 互动小说
+        </div>
+        <div class="header-actions">
+          <i class="fa-solid fa-magnifying-glass" id="sidebarSearchBtn"></i>
+          <i class="fa-solid fa-bars" id="sidebarHiddenBtn"></i>
+        </div>
+      </div>
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-header-empty"></div>
+        <button class="new-fiction-btn" id="newFictionBtn"><i class="fa-solid fa-plus"></i>开启新剧本</button>
+        <div class="history-container" id="historyContainer"></div>
+        <div class="user-profile">
+          <div class="avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" /></div>
+          <span class="username">小布尔乔亚</span>
+          <i class="fa-solid fa-ellipsis profile-more"></i>
+        </div>
+        <div class="disclaimer">内容由 AI 生成，请仔细甄别</div>
+      </div>
+      <div class="sidebar-empty" id="sidebarEmpty"></div>
+      <main class="main-container" id="mainContainer">
+        <div class="content-area" id="contentArea"></div>
+        <div class="select-area" id="selectArea"></div>
+        <div class="input-area" id="inputArea">
+          <textarea id="messageInput" placeholder="..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" title="send"><i class="fa-solid fa-arrow-up"></i></button>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
