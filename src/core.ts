@@ -77,7 +77,7 @@ export async function ifBE(messages: string[]): Promise<ExtendResp> {
         body: JSON.stringify({ "content": content })
     });
     const markedContent = await marked.parse(res, { renderer });
-    return [null, { title: "Bad End", content: res, options: [], correct: -1 }, markedContent];
+    return [null, { title: "Bad End", content: res, options: [], incorrect: -1 }, markedContent];
 }
 
 export async function ifHE(messages: string[]): Promise<ExtendResp> {
@@ -88,5 +88,5 @@ export async function ifHE(messages: string[]): Promise<ExtendResp> {
         body: JSON.stringify({ "content": content })
     });
     const markedContent = await marked.parse(res, { renderer });
-    return [null, { title: "Happy End", content: res, options: [], correct: -1 }, markedContent];
+    return [null, { title: "Happy End", content: res, options: [], incorrect: -1 }, markedContent];
 }

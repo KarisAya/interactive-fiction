@@ -57,5 +57,5 @@ export type ResponseData = {
     title: string,
     content: string,
     options: string[]
-    correct: number
+    incorrect: number
 }

@@ -46,7 +46,7 @@ app.post('/if-start', async (c) => {
             messages: [{ role: "system", content: createPrompt }, { role: "user", content: theme }],
             response_format: { type: "json_object", }
         }, (r: any) => JSON.parse(r.choices[0].message.content));
-        resp.correct = -1;
+        resp.incorrect = -1;
         return c.json(resp);
     } catch (err: any) {
         console.error("API call failed:", err);
@@ -58,14 +58,14 @@ app.post('/if-keep', async (c) => {
     try {
         let { content } = await c.req.json<{ content: string }>();
         if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
-        const correct = Math.floor(Math.random() * 3);
-        content += `\n\n请将你输出的第 ${correct + 1} 个选项作为正确的选项`
+        const incorrect = Math.floor(Math.random() * 3);
+        content += `\n\n请将你输出的第 ${incorrect + 1} 个选项作为错误选项`
         const resp = await callApi<ResponseData>(c.env, {
             model: "",
             messages: [{ role: "system", content: keepPrompt }, { role: "user", content: content }],
             response_format: { type: "json_object", }
         }, (r: any) => JSON.parse(r.choices[0].message.content));
-        resp.correct = correct;
+        resp.incorrect = incorrect;
         return c.json(resp);
     } catch (err: any) {
         return c.json({ error: err.message }, 500);

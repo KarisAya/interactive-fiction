@@ -245,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.style.removeProperty(varName);
     });
     mainContainer.classList.remove('has-image');
-
   }
   function lastOptions(): string[] | void {
     const options = (contentArea.lastElementChild as HTMLElement)?.dataset?.options;
@@ -256,8 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
   }
-  function lastCorrect(): string | void {
-    return (contentArea.lastElementChild as HTMLElement)?.dataset?.correct;
+  function lastIncorrect(): string | void {
+    return (contentArea.lastElementChild as HTMLElement)?.dataset?.incorrect;
   }
   function selectHistory(history: IFHistory) {
     themeVars.forEach((varName, index) => {
@@ -271,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentIFThemeID = history.id;
     const options = lastOptions();
     renderOptions(options);
-    mainContainer.scrollTop = mainContainer.scrollHeight;
+    // mainContainer.scrollTop = mainContainer.scrollHeight;
   }
   function renderOptions(options: string[] | void) {
     inputArea.classList.remove('hidden');
@@ -314,8 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const options = resp_data.options;
     if (options.length > 0) {
       ifContent.dataset.options = JSON.stringify(options);
-      const correct = resp_data.correct;
-      if (correct > 0) { ifContent.dataset.correct = correct.toString(); }
+      const incorrect = resp_data.incorrect;
+      if (incorrect > 0) { ifContent.dataset.incorrect = incorrect.toString(); }
       history.messages.push(resp_data.content);
     }
     history.innerHTML += ifContent.outerHTML;
@@ -323,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rendering) { selectHistory(history); }
   }
   const selectOptionFlag = new Map<string, true>();
-  function selectOption(option: string, keep: boolean, ifThemeID: string) {
+  function selectOption(option: string, be: boolean, ifThemeID: string) {
     if (selectOptionFlag.has(ifThemeID)) return;
     selectOptionFlag.set(ifThemeID, true);
     const ifContent = document.createElement('div');
@@ -336,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     history.messages.push(option);
-    const func = keep ? (history.he ? ifHE : ifKEEP) : ifBE;
+    const func = be ? ifBE : (history.he ? ifHE : ifKEEP);
     func(history.messages).then((resp) => {
       renderResponse(resp, ifContent, history, ifThemeID === currentIFThemeID);
     }).finally(() => { selectOptionFlag.delete(ifThemeID); });
@@ -410,9 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const option = selectItem.querySelector('p')?.textContent;
       if (!option) return;
       selectItem.classList.add('selected');
-      const correct = lastCorrect()
+      const incorrect = lastIncorrect()
       const select = selectItem.dataset.id
-      selectOption(option, !(select && correct) || select === correct, currentIFThemeID);
+      selectOption(option, !(select && incorrect) || select === incorrect, currentIFThemeID);
       return;
     } else if (target.closest('.select-back')) {
       const history = getHistoryByID(currentIFThemeID);
