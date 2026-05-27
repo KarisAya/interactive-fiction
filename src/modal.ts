@@ -55,7 +55,7 @@ export function configTemplate({ backdrop, modal } = creatModal()) {
     modal.appendChild(content);
 }
 
-export function aboutTemplate({ backdrop, modal } = creatModal()) {
+export function aboutTemplate(modal = creatModal().modal) {
     const content = document.createElement("div");
     content.className = "modal-content";
     content.innerHTML = `\

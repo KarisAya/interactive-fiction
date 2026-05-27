@@ -115,9 +115,10 @@ function createHistoryItem(history: IFHistory) {
       </div>`;
     }
     endBtn.onclick = () => {
-      if (history.he) { delete history.he; }
-      else { history.he = true; }
-      saveHistory(history);
+      const newHistory = getHistoryByID(history.id) || history;
+      if (newHistory.he) { delete newHistory.he; }
+      else { newHistory.he = true; }
+      saveHistory(newHistory);
       document.body.removeChild(backdrop);
     }
     const colorBtn = document.createElement('div');
@@ -130,15 +131,17 @@ function createHistoryItem(history: IFHistory) {
     colorBtn.onclick = () => {
       if (generateColorsByStoryFlag) return;
       generateColorsByStoryFlag = true;
-      const story = history.messages.at(-1)
+      const newHistory = getHistoryByID(history.id) || history;
+      const story = newHistory.messages.at(-1)
       if (!story) return;
       generateColorsByStory(story).then(colors => {
         if (colors.length != 5) return;
-        history.colors = colors;
-        saveHistory(history);
-        if (currentIFThemeID === history.id) {
+        const new2History = getHistoryByID(history.id) || newHistory;
+        new2History.colors = colors;
+        saveHistory(new2History);
+        if (currentIFThemeID === new2History.id) {
           themeVars.forEach((varName, index) => {
-            document.documentElement.style.setProperty(varName, history.colors[index]);
+            document.documentElement.style.setProperty(varName, colors[index]);
           });
         }
       }).finally(() => { generateColorsByStoryFlag = false });
@@ -224,12 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const key in ifHistorys) {
         const history = ifHistorys[key];
         const IFHistoryItem = createHistoryItem(history);
-        IFHistoryItem.onclick = () => {
-          const history = getHistoryByID(key);
-          if (!history) return;
-          selectHistory(history);
-          mainContainer.scrollTop = mainContainer.scrollHeight;
-        };
+        IFHistoryItem.onclick = () => { selectHistory(getHistoryByID(key) || history); };
         historyContainer.appendChild(IFHistoryItem);
       }
     } else {
@@ -273,21 +271,33 @@ document.addEventListener('DOMContentLoaded', () => {
     contentArea.innerHTML = history.innerHTML;
     currentIFThemeID = history.id;
     const options = lastOptions();
-    if (options) renderOptions(options)
+    if (options) renderOptions(options);
+    mainContainer.scrollTop = mainContainer.scrollHeight;
   }
   function renderOptions(options: string[]) {
     inputArea.classList.remove('hidden');
     messageInput.placeholder = "输入接下来的剧情走向...";
     selectArea.innerHTML = '';
-    options.forEach((option, index) => {
+    if (options.length > 0) {
+      options.forEach((option, index) => {
+        const optionItem = document.createElement('div');
+        optionItem.className = 'select-item';
+        optionItem.dataset.id = index.toString();
+        const p = document.createElement('p');
+        p.textContent = option;
+        optionItem.appendChild(p);
+        selectArea.appendChild(optionItem);
+      });
+    } else {
+      selectArea.innerHTML = '';
       const optionItem = document.createElement('div');
-      optionItem.className = 'select-item';
-      optionItem.dataset.id = index.toString();
+      optionItem.className = 'select-back';
       const p = document.createElement('p');
-      p.textContent = option;
+      p.textContent = "返回上个选项";
       optionItem.appendChild(p);
       selectArea.appendChild(optionItem);
-    });
+      inputArea.classList.add('hidden');
+    }
   }
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: IFHistory, rendering: boolean) {
     const [image, resp_data, markedContent] = resp;
@@ -298,9 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = image;
       img.className = 'if-image';
       ifContent.appendChild(img);
-      img.onload = () => {
-        mainContainer.scrollTop = mainContainer.scrollHeight;
-      };
+      img.onload = () => { if (rendering) { mainContainer.scrollTop = mainContainer.scrollHeight; } };
     }
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
@@ -310,29 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const correct = resp_data.correct;
       if (correct > 0) { ifContent.dataset.correct = correct.toString(); }
       history.messages.push(resp_data.content);
-      if (rendering) {
-        contentArea.appendChild(ifContent);
-        history.innerHTML = contentArea.innerHTML;
-        renderOptions(options);
-        mainContainer.scrollTop = mainContainer.scrollHeight;
-        contentArea.appendChild(ifContent);
-        mainContainer.scrollTop = mainContainer.scrollHeight;
-      } else {
-        history.innerHTML = contentArea.innerHTML + ifContent.innerHTML;
-      }
-      saveHistory(history);
-    } else if (rendering) {
-      selectArea.innerHTML = '';
-      const optionItem = document.createElement('div');
-      optionItem.className = 'select-back';
-      const p = document.createElement('p');
-      p.textContent = "返回上个选项";
-      optionItem.appendChild(p);
-      selectArea.appendChild(optionItem);
-      inputArea.classList.add('hidden');
-      contentArea.appendChild(ifContent);
-      mainContainer.scrollTop = mainContainer.scrollHeight;
     }
+    history.innerHTML += ifContent.outerHTML;
+    saveHistory(history);
+    if (rendering) { selectHistory(history); }
   }
   let selectOptionFlag = false;
   function selectOption(option: string, keep: boolean) {
@@ -344,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const history = getHistoryByID(currentIFThemeID)
     if (!history) {
       alert("当前IF主题已丢失");
+      selectOptionFlag = false;
       return;
     }
     history.messages.push(option);
@@ -402,9 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
         contentArea.innerHTML = ""
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
-        contentArea.appendChild(ifContent);
         const history: IFHistory = {
-          id: currentIFThemeID,
+          id: iFThemeID,
           messages: [],
           image: resp[0],
           title: resp[1].title,
@@ -412,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
           innerHTML: ""
         };
         const rendering = iFThemeID === currentIFThemeID
-        if (rendering) selectHistory(history);
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
       }).catch((err) => {
@@ -439,8 +427,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (target.closest('.select-back')) {
       const history = getHistoryByID(currentIFThemeID);
       if (!history) return;
+      history.messages.pop();
+      delete history.he;
+      saveHistory(history);
       selectHistory(history);
-      mainContainer.scrollTop = mainContainer.scrollHeight;
       return;
     }
 
