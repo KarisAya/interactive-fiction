@@ -85,93 +85,22 @@ const endCardA = `\
 </div>`;
 
 const endCardB = `\
-<div class="card-content">
+<div class="card-content active">
   <div class="card-title">离开终章</div>
   <div class="card-desc">故事还会继续...</div>
 </div>`;
 
-function createHistoryItem(ifThemeID: string, title: string) {
-  const IFHistoryItem = document.createElement('div');
-  IFHistoryItem.className = 'history-item';
-  IFHistoryItem.id = ifThemeID;
-  const titleSpan = document.createElement('span');
-  titleSpan.className = 'history-item-title';
-  titleSpan.textContent = title;
-  const moreBtn = document.createElement('button');
-  moreBtn.className = 'sidebar-button'
-  moreBtn.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
-  moreBtn.onclick = (e) => {
-    e.stopPropagation();
-    const history = getHistoryByID(ifThemeID);
-    if (!history) { alert("当前IF主题已丢失"); return; }
-    const { backdrop, modal } = creatModal();
-    const content = document.createElement("div");
-    content.className = "modal-content";
-    content.innerHTML = `<strong>${title}</strong>`
-    const endBtn = document.createElement('div');
-    endBtn.className = 'option-card';
-    let [card, nextcard] = history.he ? [endCardB, endCardA] : [endCardA, endCardB];
-    endBtn.innerHTML = card;
-    endBtn.onclick = () => {
-      endBtn.innerHTML = nextcard;
-      [card, nextcard] = [nextcard, card]
-      const newHistory = getHistoryByID(history.id) || history;
-      if (history.he) { delete newHistory.he; }
-      else { newHistory.he = true; }
-      saveHistory(newHistory);
-    }
-    const colorBtn = document.createElement('div');
-    colorBtn.className = 'option-card';
-    colorBtn.innerHTML = `\
-    <div class="card-content">
-      <div class="card-title">重新生成主题色</div>
-      <div class="card-desc">根据最后一段故事重新生成配色</div>
-    </div>`;
-    colorBtn.onclick = () => {
-      if (generateColorsByStoryFlag) return;
-      generateColorsByStoryFlag = true;
-      const newHistory = getHistoryByID(history.id) || history;
-      const story = newHistory.messages.at(-1)
-      if (!story) return;
-      generateColorsByStory(story).then(colors => {
-        if (colors.length != 5) return;
-        const new2History = getHistoryByID(history.id) || newHistory;
-        new2History.colors = colors;
-        saveHistory(new2History);
-        if (currentIFThemeID === new2History.id) {
-          themeVars.forEach((varName, index) => {
-            document.documentElement.style.setProperty(varName, colors[index]);
-          });
-        }
-      }).finally(() => { generateColorsByStoryFlag = false });
-      document.body.removeChild(backdrop);
-    }
-    const deleteBtn = document.createElement('div');
-    deleteBtn.className = 'option-card';
-    deleteBtn.innerHTML = `\
-    <div class="card-content">
-      <div class="card-title">删除剧本</div>
-      <div class="card-desc">此操作将永久删除该剧本</div>
-    </div>`;
-    deleteBtn.onclick = () => {
-      const historys = getHistorys();
-      if (historys) {
-        delete historys![history.id];
-        localStorage.setItem('history', JSON.stringify(historys));
-      }
-      location.reload();
-    }
-    content.appendChild(endBtn);
-    content.appendChild(colorBtn);
-    content.appendChild(deleteBtn);
-    modal.appendChild(content);
-  }
-  IFHistoryItem.appendChild(titleSpan);
-  IFHistoryItem.appendChild(moreBtn);
-  return IFHistoryItem;
-}
+const colorCardA = `\
+<div class="card-content">
+  <div class="card-title">重新生成主题色</div>
+  <div class="card-desc">根据最后一段故事重新生成配色</div>
+</div>`;
 
-
+const colorCardB = `\
+<div class="card-content active">
+  <div class="card-title">重新生成主题色</div>
+  <div class="card-desc">正在生成中...</div>
+</div>`;
 function createEmptyHistory() {
   const emptyHistory = document.createElement('div');
   emptyHistory.className = 'empty-history';
@@ -219,6 +148,89 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarHeader.classList.add('expanded');
     }
   };
+  function createHistoryItem(ifThemeID: string, title: string) {
+    const IFHistoryItem = document.createElement('div');
+    IFHistoryItem.className = 'history-item';
+    IFHistoryItem.id = ifThemeID;
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'history-item-title';
+    titleSpan.textContent = title;
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'sidebar-button'
+    moreBtn.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
+    moreBtn.onclick = (e) => {
+      e.stopPropagation();
+      const history = getHistoryByID(ifThemeID);
+      if (!history) { alert("当前IF主题已丢失"); return; }
+      const { backdrop, modal } = creatModal();
+      const content = document.createElement("div");
+      content.className = "modal-content";
+      content.innerHTML = `<strong>${title}</strong>`
+      const endBtn = document.createElement('div');
+      let [endCard, nextEndCard, endCardClassName, nextEndCardClassName] = history.he ? [endCardB, endCardA, 'option-card active', 'option-card'] : [endCardA, endCardB, 'option-card', 'option-card active'];
+      endBtn.className = endCardClassName;
+      endBtn.innerHTML = endCard;
+      endBtn.onclick = () => {
+        endBtn.innerHTML = nextEndCard;
+        endBtn.className = nextEndCardClassName;
+        [endCard, nextEndCard] = [nextEndCard, endCard];
+        [endCardClassName, nextEndCardClassName] = [nextEndCardClassName, endCardClassName];
+        const newHistory = getHistoryByID(history.id) || history;
+        if (newHistory.he) { delete newHistory.he; }
+        else { newHistory.he = true; }
+        saveHistory(newHistory);
+      }
+      const colorBtn = document.createElement('div');
+      [colorBtn.innerHTML, colorBtn.className] = generateColorsByStoryFlag ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
+      colorBtn.onclick = () => {
+        if (generateColorsByStoryFlag) return;
+        generateColorsByStoryFlag = true;
+        colorBtn.innerHTML = colorCardB;
+        colorBtn.classList.add('active');
+        const newHistory = getHistoryByID(history.id) || history;
+        const story = newHistory.messages.at(-1)
+        if (!story) return;
+        generateColorsByStory(story).then(colors => {
+          colorBtn.innerHTML = colorCardA;
+          colorBtn.classList.remove('active');
+          if (colors.length != 5) return;
+          const new2History = getHistoryByID(history.id) || newHistory;
+          new2History.colors = colors;
+          saveHistory(new2History);
+          if (currentIFThemeID === new2History.id) {
+            themeVars.forEach((varName, index) => {
+              document.documentElement.style.setProperty(varName, colors[index]);
+            });
+          }
+        }).finally(() => { generateColorsByStoryFlag = false });
+      }
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'option-card';
+      deleteBtn.innerHTML = `\
+    <div class="card-content">
+      <div class="card-title">删除剧本</div>
+      <div class="card-desc">此操作将永久删除该剧本</div>
+    </div>`;
+      deleteBtn.onclick = () => {
+        const historys = getHistorys();
+        if (historys) {
+          delete historys![history.id];
+          localStorage.setItem('history', JSON.stringify(historys));
+        }
+        IFHistoryItem.remove();
+        backdrop.remove();
+        newFiction()
+      }
+      content.appendChild(endBtn);
+      content.appendChild(colorBtn);
+      content.appendChild(deleteBtn);
+      modal.appendChild(content);
+    }
+    IFHistoryItem.appendChild(titleSpan);
+    IFHistoryItem.appendChild(moreBtn);
+    return IFHistoryItem;
+  }
+
   function renderHistory() {
     historyContainer.innerHTML = '';
     const ifHistorys = getHistorys();

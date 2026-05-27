@@ -184,7 +184,12 @@
   transform: translateY(-2px);
   animation: pulse 2s infinite ease-in-out;
 }
+
 .option-card:active {
   transform: translateY(0);
+}
+
+.option-card.active {
   background: var(--theme-color-transparent);
+  animation: pulse 2s infinite ease-in-out;
 }
