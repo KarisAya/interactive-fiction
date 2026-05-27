@@ -175,9 +175,16 @@
   transition: all 0.2s ease;
   background: var(--bg-color);
   margin-bottom: 12px;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
 }
 
 .option-card:hover {
   transform: translateY(-2px);
   animation: pulse 2s infinite ease-in-out;
+}
+.option-card:active {
+  transform: translateY(0);
+  background: var(--theme-color-transparent);
 }

@@ -75,51 +75,50 @@ function createWelcomeScreen() {
   return welcomeScreen;
 }
 
-// function createHistoryItem(history: IFHistory) {
-//   const IFHistoryItem = document.createElement('div');
-//   IFHistoryItem.className = 'history-item';
-//   IFHistoryItem.id = history.id;
-//   IFHistoryItem.textContent = history.title;
-//   return IFHistoryItem;
-// }
 let generateColorsByStoryFlag = false;
-function createHistoryItem(history: IFHistory) {
+
+
+const endCardA = `\
+<div class="card-content">
+  <div class="card-title">进入终章</div>
+  <div class="card-desc">下个选项会进入 Happy End</div>
+</div>`;
+
+const endCardB = `\
+<div class="card-content">
+  <div class="card-title">离开终章</div>
+  <div class="card-desc">故事还会继续...</div>
+</div>`;
+
+function createHistoryItem(ifThemeID: string, title: string) {
   const IFHistoryItem = document.createElement('div');
   IFHistoryItem.className = 'history-item';
-  IFHistoryItem.id = history.id;
+  IFHistoryItem.id = ifThemeID;
   const titleSpan = document.createElement('span');
   titleSpan.className = 'history-item-title';
-  titleSpan.textContent = history.title;
+  titleSpan.textContent = title;
   const moreBtn = document.createElement('button');
   moreBtn.className = 'sidebar-button'
   moreBtn.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
   moreBtn.onclick = (e) => {
     e.stopPropagation();
+    const history = getHistoryByID(ifThemeID);
+    if (!history) { alert("当前IF主题已丢失"); return; }
     const { backdrop, modal } = creatModal();
     const content = document.createElement("div");
     content.className = "modal-content";
-    content.innerHTML = `<strong>${history.title}</strong>`
+    content.innerHTML = `<strong>${title}</strong>`
     const endBtn = document.createElement('div');
     endBtn.className = 'option-card';
-    if (history.he) {
-      endBtn.innerHTML = `\
-      <div class="card-content">
-        <div class="card-title">离开终章</div>
-        <div class="card-desc">故事还会继续...</div>
-      </div>`;
-    } else {
-      endBtn.innerHTML = `\
-      <div class="card-content">
-        <div class="card-title">进入终章</div>
-        <div class="card-desc">下一次选项会进入 Happy End</div>
-      </div>`;
-    }
+    let [card, nextcard] = history.he ? [endCardB, endCardA] : [endCardA, endCardB];
+    endBtn.innerHTML = card;
     endBtn.onclick = () => {
+      endBtn.innerHTML = nextcard;
+      [card, nextcard] = [nextcard, card]
       const newHistory = getHistoryByID(history.id) || history;
-      if (newHistory.he) { delete newHistory.he; }
+      if (history.he) { delete newHistory.he; }
       else { newHistory.he = true; }
       saveHistory(newHistory);
-      document.body.removeChild(backdrop);
     }
     const colorBtn = document.createElement('div');
     colorBtn.className = 'option-card';
@@ -226,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ifHistorys) {
       for (const key in ifHistorys) {
         const history = ifHistorys[key];
-        const IFHistoryItem = createHistoryItem(history);
+        const IFHistoryItem = createHistoryItem(key, history.title);
         IFHistoryItem.onclick = () => { selectHistory(getHistoryByID(key) || history); };
         historyContainer.appendChild(IFHistoryItem);
       }
@@ -308,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.src = image;
       img.className = 'if-image';
       ifContent.appendChild(img);
-      img.onload = () => { if (rendering) { mainContainer.scrollTop = mainContainer.scrollHeight; } };
+      img.onload = () => { mainContainer.scrollTop = mainContainer.scrollHeight; };
     }
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
@@ -381,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       ifSTART(message).then(([resp, colors]) => {
         messageInput.value = "";
-        contentArea.innerHTML = ""
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
         const history: IFHistory = {
@@ -393,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
           innerHTML: ""
         };
         const rendering = iFThemeID === currentIFThemeID
+        if (rendering) { contentArea.innerHTML = "" }
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
       }).catch((err) => {
