@@ -323,25 +323,24 @@ document.addEventListener('DOMContentLoaded', () => {
     saveHistory(history);
     if (rendering) { selectHistory(history); }
   }
-  let selectOptionFlag = false;
-  function selectOption(option: string, keep: boolean) {
-    if (selectOptionFlag) return;
-    selectOptionFlag = true;
+  const selectOptionFlag = new Map<string, true>();
+  function selectOption(option: string, keep: boolean, ifThemeID: string) {
+    if (selectOptionFlag.has(ifThemeID)) return;
+    selectOptionFlag.set(ifThemeID, true);
     const ifContent = document.createElement('div');
     ifContent.className = 'if-content';
     ifContent.innerHTML = `<div class="delete-this"><i class="fa-solid fa-trash" ></i></div>\n<p>${option}</p>`;
-    const history = getHistoryByID(currentIFThemeID)
+    const history = getHistoryByID(ifThemeID)
     if (!history) {
       alert("当前IF主题已丢失");
-      selectOptionFlag = false;
+      selectOptionFlag.delete(ifThemeID);
       return;
     }
     history.messages.push(option);
     const func = keep ? (history.he ? ifHE : ifKEEP) : ifBE;
-    const ifThemeID = currentIFThemeID;
     func(history.messages).then((resp) => {
       renderResponse(resp, ifContent, history, ifThemeID === currentIFThemeID);
-    }).finally(() => { selectOptionFlag = false; });
+    }).finally(() => { selectOptionFlag.delete(ifThemeID); });
   }
   handleResize();
   renderHistory()
@@ -358,24 +357,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   window.addEventListener('resize', handleResize);
-
-  newFictionBtn.onclick = () => {
-    if (selectOptionFlag) return;
-    if (currentIFThemeID === '') return;
-    newFiction();
-  };
-
+  newFictionBtn.onclick = newFiction
   messageInput.oninput = () => {
     messageInput.style.height = 'auto';
     messageInput.style.height = `${messageInput.scrollHeight}px`;
   }
   sendBtn.onclick = () => {
-    if (selectOptionFlag) return;
     const message = messageInput.value.trim();
     if (message.length < 1) return;
     if (currentIFThemeID) {
       messageInput.value = "";
-      selectOption(message, true);
+      selectOption(message, true, currentIFThemeID);
     } else {
       sendBtn.disabled = true;
       currentIFThemeID = `IF${Date.now()}${md5(message)} `;
@@ -413,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   selectArea.onclick = (e) => {
-    if (selectOptionFlag) return;
     const target = e.target as HTMLElement;
     let selectItem: HTMLElement | null;
     if (selectItem = target.closest('.select-item')) {
@@ -422,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectItem.classList.add('selected');
       const correct = lastCorrect()
       const select = selectItem.dataset.id
-      selectOption(option, !(select && correct) || select === correct);
+      selectOption(option, !(select && correct) || select === correct, currentIFThemeID);
       return;
     } else if (target.closest('.select-back')) {
       const history = getHistoryByID(currentIFThemeID);
