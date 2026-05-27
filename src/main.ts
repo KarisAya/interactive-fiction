@@ -270,14 +270,14 @@ document.addEventListener('DOMContentLoaded', () => {
     contentArea.innerHTML = history.innerHTML;
     currentIFThemeID = history.id;
     const options = lastOptions();
-    if (options) renderOptions(options);
+    renderOptions(options);
     mainContainer.scrollTop = mainContainer.scrollHeight;
   }
-  function renderOptions(options: string[]) {
+  function renderOptions(options: string[] | void) {
     inputArea.classList.remove('hidden');
     messageInput.placeholder = "输入接下来的剧情走向...";
     selectArea.innerHTML = '';
-    if (options.length > 0) {
+    if (options) {
       options.forEach((option, index) => {
         const optionItem = document.createElement('div');
         optionItem.className = 'select-item';
@@ -417,7 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (target.closest('.select-back')) {
       const history = getHistoryByID(currentIFThemeID);
       if (!history) return;
-      history.messages.pop();
+      const ifContent = contentArea.lastElementChild;
+      if (!ifContent) return;
+      ifContent.remove();
+      history.messages.length = contentArea.children.length * 2 - 1;
+      history.innerHTML = contentArea.innerHTML;
       delete history.he;
       saveHistory(history);
       selectHistory(history);
