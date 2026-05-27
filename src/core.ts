@@ -8,11 +8,11 @@ export type ExtendResp = [string | null, ResponseData, string];
 
 async function fetchResp(url: string, options: RequestInit): Promise<Response> {
     const api = localStorage.getItem("ifApiUrl") || "/api";
-    const response = await fetch(`${api.replace(/\/$/, "")}${url}`, options);
-    if (!response.ok) {
-        throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+    const resp = await fetch(`${api.replace(/\/$/, "")}${url}`, options);
+    if (!resp.ok) {
+        throw new Error(`API 请求失败: ${resp.status} ${resp.statusText}`);
     }
-    return response;
+    return resp;
 }
 async function fetchText(url: string, options: RequestInit): Promise<string> {
     const resp = await fetchResp(url, options);
@@ -24,17 +24,22 @@ async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
     return await resp.json();
 }
 
-async function generateImageByContent(content: string): Promise<string> {
-    const data = await fetchJson<{ imageUrl: string }>("/generate-image", {
+async function generateImageByContent(content: string): Promise<string | null> {
+    const api = localStorage.getItem("t2iApiUrl") || "";
+    if (!api) { return null }
+    const resp = await fetch(api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ "content": content })
     });
-    return data.imageUrl;
+    if (!resp.ok) {
+        console.warn(`文生图请求失败: ${resp.status} ${resp.statusText}`);
+        return null;
+    }
+    return (await resp.json()).image;
 }
 
 export async function generateColorsByStory(story: string): Promise<string[]> {
-    // 让大模型根据小说风格返回 5 个 hex 颜色数组
     const data = await fetchJson<string[]>("/generate-colors", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -29,6 +29,7 @@
   width: 80vw;
   max-width: 400px;
   border-radius: var(--radius-small);
+  border: var(--default-border);
 }
 
 .modal-content {

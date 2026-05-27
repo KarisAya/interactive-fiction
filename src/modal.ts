@@ -9,44 +9,40 @@ export function creatModal() {
     document.body.appendChild(backdrop);
     return { backdrop, modal }
 }
-
+function updateFromInput(id: string) {
+    const div = document.getElementById(id) as HTMLInputElement;
+    if (!div) return;
+    const value = div.value.trim();
+    if (!value) { localStorage.removeItem(id); }
+    else { localStorage.setItem(id, value); }
+}
 export function configTemplate({ backdrop, modal } = creatModal()) {
     const content = document.createElement("div");
     content.className = "modal-content";
-    const ifUrl = localStorage.getItem("ifApiUrl") || "";
-    const sdUrl = localStorage.getItem("sdApiUrl") || "http://127.0.0.1:7860/sdapi/";
+    const ifApiUrl = localStorage.getItem("ifApiUrl") || "";
+    const t2iApiUrl = localStorage.getItem("t2iApiUrl") || "";
     content.innerHTML = `\
     <strong>IF 配置</strong>
     <div class="modal-item">
         <label for="ifApiUrl">IF 互动小说 API URL</label>
-        <input type="text" id="ifApiUrl" value="${ifUrl}" placeholder="${ifUrl || "http://127.0.0.1:8788/api/"}">
+        <input type="text" id="ifApiUrl" value="${ifApiUrl}" placeholder="${ifApiUrl || "http://127.0.0.1:11005/api/"}">
     </div>
     <div class="modal-item">
-        <label for="sdApiUrl">SD 图片生成 API URL</label>
-        <input type="text" id="sdApiUrl" value="${sdUrl}" placeholder="${sdUrl}">
+        <label for="t2iApiUrl">文生图服务器</label>
+        <input type="text" id="t2iApiUrl" value="${t2iApiUrl}" placeholder="${t2iApiUrl || "http://127.0.0.1:11005/api/generate-image"}">
     </div>`;
     const confirmBtn = document.createElement("button");
     confirmBtn.className = "modal-button confirm";
     confirmBtn.textContent = "确定";
     confirmBtn.onclick = () => {
-        const ifApiUrl = document.getElementById("ifApiUrl") as HTMLInputElement;
-        if (ifApiUrl) {
-            const url = ifApiUrl.value.trim()
-            if (!url) { localStorage.removeItem("ifApiUrl"); }
-            else if (url.startsWith("http")) { localStorage.setItem("ifApiUrl", url); }
-        }
-        const sdApiUrl = document.getElementById("sdApiUrl") as HTMLInputElement;
-        if (sdApiUrl) {
-            const url = sdApiUrl.value.trim()
-            if (!url) { localStorage.removeItem("sdApiUrl"); }
-            else if (url.startsWith("http")) { localStorage.setItem("sdApiUrl", url); }
-        }
-        document.body.removeChild(backdrop);
+        updateFromInput("ifApiUrl");
+        updateFromInput("t2iApiUrl");
+        backdrop.remove();
     }
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "modal-button cancel";
     cancelBtn.textContent = "取消";
-    cancelBtn.onclick = () => document.body.removeChild(backdrop);
+    cancelBtn.onclick = () => backdrop.remove();
     const btns = document.createElement("div");
     btns.className = "modal-buttons";
     btns.appendChild(confirmBtn);

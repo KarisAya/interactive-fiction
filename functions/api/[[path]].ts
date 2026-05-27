@@ -115,18 +115,4 @@ app.post('/generate-colors', async (c) => {
     }
 });
 
-
-app.post('/generate-image', async (c) => {
-    try {
-        const { content } = await c.req.json<{ content: string }>();
-        return c.json({ imageUrl: "" });
-    } catch (err: any) {
-        return c.json({ error: err.message }, 500);
-    }
-});
-
 export const onRequest = handle(app);
-
-function randomInt(arg0: number, arg1: number) {
-    throw new Error('Function not implemented.');
-}

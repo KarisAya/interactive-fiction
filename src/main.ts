@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (message.length < 1) return;
     if (currentIFThemeID) {
       messageInput.value = "";
-      selectOption(message, true, currentIFThemeID);
+      selectOption(message, false, currentIFThemeID);
     } else {
       sendBtn.disabled = true;
       currentIFThemeID = `IF${Date.now()}${md5(message)} `;
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectItem.classList.add('selected');
       const incorrect = lastIncorrect()
       const select = selectItem.dataset.id
-      selectOption(option, !(select && incorrect) || select === incorrect, currentIFThemeID);
+      selectOption(option, Boolean(select && incorrect) && (select === incorrect), currentIFThemeID);
       return;
     } else if (target.closest('.select-back')) {
       const history = getHistoryByID(currentIFThemeID);
