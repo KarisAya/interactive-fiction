@@ -93,7 +93,7 @@ const endCardB = `\
 const colorCardA = `\
 <div class="card-content">
   <div class="card-title">重新生成主题色</div>
-  <div class="card-desc">根据最后一段故事重新生成配色</div>
+  <div class="card-desc">根据本段故事重新生成配色</div>
 </div>`;
 
 const colorCardB = `\
@@ -105,7 +105,7 @@ const colorCardB = `\
 const imageCardA = `\
 <div class="card-content">
   <div class="card-title">生成图片</div>
-  <div class="card-desc">根据最后几段故事生成图片</div>
+  <div class="card-desc">根据本段故事生成图片</div>
 </div>`;
 
 const imageCardB = `\
@@ -135,18 +135,40 @@ async function viewImage(prompt_id: string, callback: (result: string) => void) 
   const startTime = Date.now();
   const TEN_MINUTES = 10 * 60 * 1000;
   while (Date.now() - startTime < TEN_MINUTES) {
+    await delay(10000);
     try {
-      const { status, raw } = await viewImageById(prompt_id);
+      const resp = await viewImageById(prompt_id);
+      if (!resp) { continue; }
+      const { status, message, raw } = resp;
+      console.log('轮询图片状态：', status, " ", message);
       if (status !== 'waiting') {
-        if (raw) { callback(`data:image/*;base64,${raw}`); }
+        if (raw) { callback(raw); }
         return
       }
     } catch (error) {
       console.error('轮询图片时出错：', error);
     }
-    await delay(5000);
   }
 }
+
+function base64ToBlobUrl(base64Data: string, mimeType: string = 'image/png'): string {
+  const byteCharacters = atob(base64Data);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
+const imageBlobs = new Map<string, string>();
+
+function getImageById(id: string, b64: string) {
+  if (!imageBlobs.has(id)) { imageBlobs.set(id, base64ToBlobUrl(b64)); }
+  return imageBlobs.get(id)!;
+}
+
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -244,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = history.messages.at(-1)
         if (!content) return;
         generateImageFlag = true;
-        imageBtn.innerHTML = colorCardB;
+        imageBtn.innerHTML = imageCardB;
         imageBtn.classList.add('active');
         generateImageByContent(content).then(promptId => {
           viewImage(promptId, (image) => {
@@ -252,15 +274,21 @@ document.addEventListener('DOMContentLoaded', () => {
             newHistory.image = image;
             saveHistory(newHistory);
             if (newHistory.id !== currentIFThemeID) { return; }
-            mainContainer.style.setProperty('--bg-image', `url(${image})`);
+            base64ToBlobUrl
+            mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
             mainContainer.classList.add('has-image');
+          }).finally(() => {
+            generateImageFlag = false;
+            imageBtn.innerHTML = imageCardA;
+            imageBtn.classList.remove('active');
           })
-        }).finally(() => {
-          imageBtn.innerHTML = colorCardA;
+        }
+        ).catch(() => {
+          generateImageFlag = false;
+          imageBtn.innerHTML = imageCardA;
           imageBtn.classList.remove('active');
-          generateImageFlag = false
-
-        });;
+        }
+        )
       }
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'option-card';
@@ -315,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     themeVars.forEach((varName) => {
       document.documentElement.style.removeProperty(varName);
     });
+    mainContainer.style.removeProperty('--bg-image');
     mainContainer.classList.remove('has-image');
   }
   function lastOptions(): string[] | void {
@@ -334,8 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.style.setProperty(varName, history.colors[index]);
     });
     if (history.image) {
-      mainContainer.style.setProperty('--bg-image', `url(${history.image})`);
+      mainContainer.style.setProperty('--bg-image', `url(${getImageById(history.id, history.image)})`);
       mainContainer.classList.add('has-image');
+    } else {
+      mainContainer.style.removeProperty('--bg-image');
+      mainContainer.classList.remove('has-image');
     }
     contentArea.innerHTML = history.innerHTML;
     currentIFThemeID = history.id;
@@ -376,9 +408,9 @@ document.addEventListener('DOMContentLoaded', () => {
         newHistory.image = image;
         saveHistory(newHistory);
         if (newHistory.id !== currentIFThemeID) { return; }
-        mainContainer.style.setProperty('--bg-image', `url(${image})`);
+        mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
         mainContainer.classList.add('has-image');
-      }).finally(() => { generateImageFlag = false });
+      }).finally(() => { generateImageFlag = false; });
     } else { generateImageFlag = false; }
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
@@ -456,14 +488,13 @@ document.addEventListener('DOMContentLoaded', () => {
       generateColorsFlag = true;
       generateImageFlag = true;
       ifSTART(message).then(([resp, colors]) => {
-        generateColorsFlag = false;
         messageInput.value = "";
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
         const history: IFHistory = {
           id: iFThemeID,
           messages: [],
-          image: resp[0],
+          image: null,
           title: resp[1].title,
           colors: colors,
           innerHTML: ""
@@ -473,10 +504,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
       }).catch((err) => {
+        generateImageFlag = false
         console.error("初始化剧本失败:", err);
         alert("初始化剧本失败");
         newFiction();
       }).finally(() => {
+        generateColorsFlag = false;
         sendBtn.disabled = false;
       });
     }

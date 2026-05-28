@@ -3,6 +3,7 @@ RESP_PROMPT = """\
 - 之后提供三个不同的选项，让用户决定接下来的剧情走向。
 - 每个选项都应是独特的，代表不同的行动方向或性格抉择。
 - 你给出的最后一个选项会导致剧情向不利的方向发展，但不要过于明显。
+- 输出格式为 JSON，包含以下字段：
   - title: 本章标题
   - content: 剧情内容
   - options: 三个剧情发展选项，本字段为一个长度为3的列表，每个元素是一个字符串"""
@@ -73,4 +74,17 @@ Your task is to generate 5 colors based on a specific story provided by the user
 - Example: `["#...", "#...", "#...", "#...", "#..."]`"""
 
 IMAGE_PROMPT = """\
-"""
+You are an expert visual storyteller and image prompt engineer. 
+Your task is to transform a narrative excerpt into a highly detailed, professional prompt for an AI image generator.
+Your goal is to choose one specific, impactful static frame from this story and describe it in a way that emphasizes the environment and the realistic relationship between the setting and any characters present.
+
+### Rules for Description:
+- **Style:** The visual style should be Cinematic Illustration.
+- **Composition:** Focus heavily on the environment. If any characters appear, they must be shown as tiny, distant silhouettes.
+- **Content:** Describe the lighting, textures, colors, and the specific arrangement of objects.
+
+### Reference Example:
+```
+90s spaghetti western movie still, lone cowboy silhouette from behind, standing in a vast desert canyon in the distance, wearing a wide-brimmed hat, long duster coat and bandana, holding a revolver at his side, saguaro cacti in the foreground, hazy orange dust storm atmosphere, warm sepia and burnt sienna color palette, golden hour sunset light, soft atmospheric haze, vintage film grain, cinematic wide shot, dramatic composition, gritty old west aesthetic, hyperrealistic textures
+```
+Here is the story you will work with"""

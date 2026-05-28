@@ -34,13 +34,13 @@ export async function generateImageByContent(content: string): Promise<string> {
 }
 export async function viewImageById(prompt_id: string) {
     try {
-        return await fetchJson<{ status: "waiting" | "ok" | "error"; raw?: string }>(
+        return await fetchJson<{ status: "waiting" | "ok" | "error", message: String, raw: string }>(
             `/view-image?prompt_id=${encodeURIComponent(prompt_id)}`,
             { method: 'GET' },
         );
     } catch (e) {
         console.error(e);
-        return { status: "waiting", raw: undefined };
+        return;
     }
 
 }

@@ -9,6 +9,7 @@ import httpx
 import websockets
 import uvicorn
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -125,14 +126,14 @@ class OpenAIAPI:
 
 class Server:
     def __init__(self, config_file: str):
-        with open(config_file, "rb", encoding="utf-8") as f:
-            config = Config.model_validate(json.load(f))
+        with open(config_file, "rb") as f:
+            config = Config.model_validate(tomllib.load(f))
         self.host = config.host
         self.port = config.port
         self.client = httpx.AsyncClient(trust_env=False, timeout=60.0)
         self.comfy_ui = ComfyUI(config.comfy_ui)
         self.openai = OpenAIAPI(config.openai)
-        self.app = FastAPI(root_path="/api")
+        self.app = FastAPI(root_path="/api", lifespan=self.lifespan)
         self.app.add_middleware(
             CORSMiddleware,
             allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
@@ -150,6 +151,17 @@ class Server:
         self.app.post("/generate-image")(self.generate_image)
         self.app.get("/view-image")(self.view_image)
 
+    @asynccontextmanager
+    async def lifespan(self, app: FastAPI):
+        loop = asyncio.get_running_loop()
+        ws_task = loop.create_task(self.comfy_ui.receive_serve())
+        logger.info("ComfyUI WebSocket receiver started.")
+        yield
+        self.comfy_ui.running = False
+        ws_task.cancel()
+        await self.client.aclose()
+        logger.info("ComfyUI WebSocket receiver stopped.")
+
     async def if_start(self, request: Request):
         content = await request.body()
         content = content.decode("utf-8")
@@ -161,6 +173,7 @@ class Server:
             resp_data["incorrect"] = -1
             return JSONResponse(content=resp_data)
         except Exception as err:
+            logger.exception(err)
             raise HTTPException(status_code=500, detail=str(err))
 
     async def if_keep(self, request: Request):
@@ -227,17 +240,18 @@ class Server:
             prompt_id = await self.comfy_ui.generate_image(self.client, message["content"])
             return JSONResponse(content={"prompt_id": prompt_id})
         except Exception as err:
+            logger.exception(err)
             raise HTTPException(status_code=500, detail=str(err))
 
     async def view_image(self, prompt_id: str):
         try:
             raw = await self.comfy_ui.view_image(self.client, prompt_id)
             if raw is None:
-                return JSONResponse(content={"status": "waiting"})
+                return JSONResponse(content={"status": "waiting", "message": "", "raw": ""})
             else:
-                return JSONResponse(content={"status": "ok", "raw": base64.b64encode(raw).decode("utf-8")})
+                return JSONResponse(content={"status": "ok", "message": "", "raw": base64.b64encode(raw).decode("utf-8")})
         except Exception as err:
-            raise HTTPException(status_code=500, detail=str(err))
+            return JSONResponse(content={"status": "error", "message": str(err), "raw": ""})
 
-    async def run(self):
+    def run(self):
         uvicorn.run(self.app, host=self.host, port=self.port)
