@@ -222,8 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const story = newHistory.messages.at(-1)
         if (!story) return;
         generateColorsByStory(story).then(colors => {
-          colorBtn.innerHTML = colorCardA;
-          colorBtn.classList.remove('active');
           if (colors.length != 5) return;
           const new2History = getHistoryByID(history.id) || newHistory;
           new2History.colors = colors;
@@ -233,7 +231,11 @@ document.addEventListener('DOMContentLoaded', () => {
               document.documentElement.style.setProperty(varName, colors[index]);
             });
           }
-        }).finally(() => { generateColorsFlag = false });
+        }).finally(() => {
+          colorBtn.innerHTML = colorCardA;
+          colorBtn.classList.remove('active');
+          generateColorsFlag = false
+        });
       }
       const imageBtn = document.createElement('div');
       [imageBtn.innerHTML, imageBtn.className] = generateImageFlag ? [imageCardB, 'option-card active'] : [imageCardA, 'option-card'];
@@ -242,6 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = history.messages.at(-1)
         if (!content) return;
         generateImageFlag = true;
+        imageBtn.innerHTML = colorCardB;
+        imageBtn.classList.add('active');
         generateImageByContent(content).then(promptId => {
           viewImage(promptId, (image) => {
             const newHistory = getHistoryByID(history.id) || history;
@@ -251,7 +255,12 @@ document.addEventListener('DOMContentLoaded', () => {
             mainContainer.style.setProperty('--bg-image', `url(${image})`);
             mainContainer.classList.add('has-image');
           })
-        }).finally(() => { generateImageFlag = false });;
+        }).finally(() => {
+          imageBtn.innerHTML = colorCardA;
+          imageBtn.classList.remove('active');
+          generateImageFlag = false
+
+        });;
       }
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'option-card';
@@ -272,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       content.appendChild(endBtn);
       content.appendChild(colorBtn);
+      content.appendChild(imageBtn);
       content.appendChild(deleteBtn);
       modal.appendChild(content);
     }

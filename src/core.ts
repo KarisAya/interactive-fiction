@@ -25,7 +25,7 @@ async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
 }
 
 export async function generateImageByContent(content: string): Promise<string> {
-    const data = await fetchJson<{ prompt_id: string }>("/generate-colors", {
+    const data = await fetchJson<{ prompt_id: string }>("/generate-image", {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: content
