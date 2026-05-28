@@ -1,0 +1,11 @@
+host = "0.0.0.0"
+port = 11005
+[openai]
+url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+api_key = "sk-xxx"
+[comfy_ui]
+server_port = 8000
+prompt_keys = ["76", "inputs", "value"]
+workflow_json_path = "./image_flux2_klein_text_to_image.json"
+consumer_timeout = 60

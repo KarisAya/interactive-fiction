@@ -3,7 +3,7 @@ import './styles/sidebar.css';
 import './styles/modal.css';
 import md5 from 'blueimp-md5';
 import type { ExtendResp } from './core';
-import { ifSTART, ifKEEP, ifBE, ifHE, generateColorsByStory } from './core';
+import { ifSTART, ifKEEP, ifBE, ifHE, generateColorsByStory, viewImageById, generateImageByContent } from './core';
 import { creatModal, configTemplate, aboutTemplate } from './modal';
 
 const themeVars = [
@@ -75,8 +75,8 @@ function createWelcomeScreen() {
   return welcomeScreen;
 }
 
-let generateColorsByStoryFlag = false;
-
+let generateColorsFlag = false;
+let generateImageFlag = false;
 
 const endCardA = `\
 <div class="card-content">
@@ -101,6 +101,19 @@ const colorCardB = `\
   <div class="card-title">重新生成主题色</div>
   <div class="card-desc">正在生成中...</div>
 </div>`;
+
+const imageCardA = `\
+<div class="card-content">
+  <div class="card-title">生成图片</div>
+  <div class="card-desc">根据最后几段故事生成图片</div>
+</div>`;
+
+const imageCardB = `\
+<div class="card-content active">
+  <div class="card-title">生成图片</div>
+  <div class="card-desc">正在生成中...</div>
+</div>`;
+
 function createEmptyHistory() {
   const emptyHistory = document.createElement('div');
   emptyHistory.className = 'empty-history';
@@ -115,6 +128,24 @@ function createChapterTitle(title: string) {
   titleSpan.textContent = title;
   chapterTitle.appendChild(titleSpan);
   return chapterTitle;
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+async function viewImage(prompt_id: string, callback: (result: string) => void) {
+  const startTime = Date.now();
+  const TEN_MINUTES = 10 * 60 * 1000;
+  while (Date.now() - startTime < TEN_MINUTES) {
+    try {
+      const { status, raw } = await viewImageById(prompt_id);
+      if (status !== 'waiting') {
+        if (raw) { callback(`data:image/*;base64,${raw}`); }
+        return
+      }
+    } catch (error) {
+      console.error('轮询图片时出错：', error);
+    }
+    await delay(5000);
+  }
 }
 
 
@@ -181,10 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
         saveHistory(newHistory);
       }
       const colorBtn = document.createElement('div');
-      [colorBtn.innerHTML, colorBtn.className] = generateColorsByStoryFlag ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
+      [colorBtn.innerHTML, colorBtn.className] = generateColorsFlag ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
       colorBtn.onclick = () => {
-        if (generateColorsByStoryFlag) return;
-        generateColorsByStoryFlag = true;
+        if (generateColorsFlag) return;
+        generateColorsFlag = true;
         colorBtn.innerHTML = colorCardB;
         colorBtn.classList.add('active');
         const newHistory = getHistoryByID(history.id) || history;
@@ -202,7 +233,25 @@ document.addEventListener('DOMContentLoaded', () => {
               document.documentElement.style.setProperty(varName, colors[index]);
             });
           }
-        }).finally(() => { generateColorsByStoryFlag = false });
+        }).finally(() => { generateColorsFlag = false });
+      }
+      const imageBtn = document.createElement('div');
+      [imageBtn.innerHTML, imageBtn.className] = generateImageFlag ? [imageCardB, 'option-card active'] : [imageCardA, 'option-card'];
+      imageBtn.onclick = () => {
+        if (generateImageFlag) return;
+        const content = history.messages.at(-1)
+        if (!content) return;
+        generateImageFlag = true;
+        generateImageByContent(content).then(promptId => {
+          viewImage(promptId, (image) => {
+            const newHistory = getHistoryByID(history.id) || history;
+            newHistory.image = image;
+            saveHistory(newHistory);
+            if (newHistory.id !== currentIFThemeID) { return; }
+            mainContainer.style.setProperty('--bg-image', `url(${image})`);
+            mainContainer.classList.add('has-image');
+          })
+        }).finally(() => { generateImageFlag = false });;
       }
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'option-card';
@@ -310,16 +359,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: IFHistory, rendering: boolean) {
-    const [image, resp_data, markedContent] = resp;
-    if (image) {
-      mainContainer.style.setProperty('--bg-image', `url(${image})`);
-      mainContainer.classList.add('has-image');
-      const img = document.createElement('img');
-      img.src = image;
-      img.className = 'if-image';
-      ifContent.appendChild(img);
-      img.onload = () => { mainContainer.scrollTop = mainContainer.scrollHeight; };
-    }
+    const [promptId, resp_data, markedContent] = resp;
+    if (promptId) {
+      viewImage(promptId, (image) => {
+        const newHistory = getHistoryByID(history.id) || history;
+        newHistory.image = image;
+        saveHistory(newHistory);
+        if (newHistory.id !== currentIFThemeID) { return; }
+        mainContainer.style.setProperty('--bg-image', `url(${image})`);
+        mainContainer.classList.add('has-image');
+      }).finally(() => { generateImageFlag = false });
+    } else { generateImageFlag = false; }
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
     const options = resp_data.options;
@@ -339,7 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
     selectOptionFlag.set(ifThemeID, true);
     const ifContent = document.createElement('div');
     ifContent.className = 'if-content';
-    ifContent.innerHTML = `<div class="delete-this"><i class="fa-solid fa-trash" ></i></div>\n<p>${option}</p>`;
+    ifContent.innerHTML = `\
+    <button class="delete-this">
+      <i class="fa-solid fa-trash" ></i>
+    </button>
+    <p>${option}</p>`;
     const history = getHistoryByID(ifThemeID)
     if (!history) {
       alert("当前IF主题已丢失");
@@ -389,7 +443,10 @@ document.addEventListener('DOMContentLoaded', () => {
           child.classList.add('loading');
         }
       }
+      generateColorsFlag = true;
+      generateImageFlag = true;
       ifSTART(message).then(([resp, colors]) => {
+        generateColorsFlag = false;
         messageInput.value = "";
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
@@ -441,9 +498,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   };
   contentArea.onclick = (e) => {
-    if (selectOptionFlag) return;
     const history = getHistoryByID(currentIFThemeID);
     if (!history) return;
+    if (selectOptionFlag.has(history.id)) return;
     const target = e.target as HTMLElement;
     const deleteBtn = target.closest('.delete-this');
     if (!deleteBtn) return;
@@ -454,6 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ifContent.remove();
     history.messages.length = contentArea.children.length * 2 - 1;
+    history.innerHTML = contentArea.innerHTML;
     saveHistory(history);
     console.log(history.messages);
     const options = lastOptions();

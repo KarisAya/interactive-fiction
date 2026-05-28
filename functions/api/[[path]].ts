@@ -39,7 +39,7 @@ app.use('*', cors({
 
 app.post('/if-start', async (c) => {
     try {
-        const { theme } = await c.req.json<{ theme: string }>();
+        const theme = await c.req.text();
         if (!theme) { return c.json({ error: 'The "theme" field is missing in the request body.' }, 400); }
         const resp = await callApi<ResponseData>(c.env, {
             model: "",
@@ -56,16 +56,19 @@ app.post('/if-start', async (c) => {
 
 app.post('/if-keep', async (c) => {
     try {
-        let { content } = await c.req.json<{ content: string }>();
+        let content = await c.req.text();
         if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
         const incorrect = Math.floor(Math.random() * 3);
-        content += `\n\n请将你输出的第 ${incorrect + 1} 个选项作为错误选项`
         const resp = await callApi<ResponseData>(c.env, {
             model: "",
             messages: [{ role: "system", content: keepPrompt }, { role: "user", content: content }],
             response_format: { type: "json_object", }
         }, (r: any) => JSON.parse(r.choices[0].message.content));
         resp.incorrect = incorrect;
+        if (!Array.isArray(resp.options)) { resp.options = []; }
+        const badopt = resp.options.pop();
+        if (!badopt) { resp.incorrect = -1; }
+        else { resp.options.splice(incorrect, 0, badopt); }
         return c.json(resp);
     } catch (err: any) {
         return c.json({ error: err.message }, 500);
@@ -75,7 +78,7 @@ app.post('/if-keep', async (c) => {
 
 app.post('/if-be', async (c) => {
     try {
-        const { content } = await c.req.json<{ content: string }>();
+        const content = await c.req.text();
         if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
         const resp = await callApi<string>(c.env, {
             model: "",
@@ -89,7 +92,7 @@ app.post('/if-be', async (c) => {
 
 app.post('/if-he', async (c) => {
     try {
-        const { content } = await c.req.json<{ content: string }>();
+        const content = await c.req.text();
         if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
         const resp = await callApi<string>(c.env, {
             model: "",
@@ -103,7 +106,7 @@ app.post('/if-he', async (c) => {
 
 app.post('/generate-colors', async (c) => {
     try {
-        const { story } = await c.req.json<{ story: string }>();
+        const story = await c.req.text();
         const resp = await callApi<string>(c.env, {
             model: "",
             messages: [{ role: "system", content: themePrompt }, { role: "user", content: story }],

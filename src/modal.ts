@@ -20,23 +20,22 @@ export function configTemplate({ backdrop, modal } = creatModal()) {
     const content = document.createElement("div");
     content.className = "modal-content";
     const ifApiUrl = localStorage.getItem("ifApiUrl") || "";
-    const t2iApiUrl = localStorage.getItem("t2iApiUrl") || "";
     content.innerHTML = `\
     <strong>IF 配置</strong>
     <div class="modal-item">
         <label for="ifApiUrl">IF 互动小说 API URL</label>
+        <div class="card-desc">
+            <p>本地 IF 互动小说 API 提供了文生图功能。</p>
+            <p>如需启动本地服务，请查阅本项目仓库文档中的服务器搭建指南。</p>
+            <p>若已搭建，请在下方输入 API URL。</p>
+        </div>
         <input type="text" id="ifApiUrl" value="${ifApiUrl}" placeholder="${ifApiUrl || "http://127.0.0.1:11005/api/"}">
-    </div>
-    <div class="modal-item">
-        <label for="t2iApiUrl">文生图服务器</label>
-        <input type="text" id="t2iApiUrl" value="${t2iApiUrl}" placeholder="${t2iApiUrl || "http://127.0.0.1:11005/api/generate-image"}">
     </div>`;
     const confirmBtn = document.createElement("button");
     confirmBtn.className = "modal-button confirm";
     confirmBtn.textContent = "确定";
     confirmBtn.onclick = () => {
         updateFromInput("ifApiUrl");
-        updateFromInput("t2iApiUrl");
         backdrop.remove();
     }
     const cancelBtn = document.createElement("button");

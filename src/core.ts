@@ -24,26 +24,32 @@ async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
     return await resp.json();
 }
 
-async function generateImageByContent(content: string): Promise<string | null> {
-    const api = localStorage.getItem("t2iApiUrl") || "";
-    if (!api) { return null }
-    const resp = await fetch(api, {
+export async function generateImageByContent(content: string): Promise<string> {
+    const data = await fetchJson<{ prompt_id: string }>("/generate-colors", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "content": content })
+        headers: { 'Content-Type': 'text/plain' },
+        body: content
     });
-    if (!resp.ok) {
-        console.warn(`文生图请求失败: ${resp.status} ${resp.statusText}`);
-        return null;
+    return data.prompt_id;
+}
+export async function viewImageById(prompt_id: string) {
+    try {
+        return await fetchJson<{ status: "waiting" | "ok" | "error"; raw?: string }>(
+            `/view-image?prompt_id=${encodeURIComponent(prompt_id)}`,
+            { method: 'GET' },
+        );
+    } catch (e) {
+        console.error(e);
+        return { status: "waiting", raw: undefined };
     }
-    return (await resp.json()).image;
+
 }
 
 export async function generateColorsByStory(story: string): Promise<string[]> {
     const data = await fetchJson<string[]>("/generate-colors", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "story": story })
+        headers: { 'Content-Type': 'text/plain' },
+        body: story
     });
     return data;
 }
@@ -51,15 +57,15 @@ export async function generateColorsByStory(story: string): Promise<string[]> {
 export async function ifSTART(theme: string): Promise<[ExtendResp, string[]]> {
     const res = await fetchJson<ResponseData>("/if-start", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "theme": `主题为\n\n${theme}\n\n请开始创作` })
+        headers: { 'Content-Type': 'text/plain' },
+        body: theme
     });
-    const [image, colors, markedContent] = await Promise.all([
+    const [promptId, colors, markedContent] = await Promise.all([
         generateImageByContent(res.content).catch(() => null),
         generateColorsByStory(`${theme}\n${res.content}`).catch(() => []),
         marked.parse(res.content, { renderer })
     ]);
-    return [[image, res, markedContent], colors.length == 5 ? colors : []];
+    return [[promptId, res, markedContent], colors.length == 5 ? colors : []];
 }
 
 export async function ifKEEP(messages: string[]): Promise<ExtendResp> {
@@ -67,8 +73,8 @@ export async function ifKEEP(messages: string[]): Promise<ExtendResp> {
     const content = `当前剧情\n${messages.slice(0, -1).join("\n")}\n用户的选择\n${messages.at(-1)}`
     const res = await fetchJson<ResponseData>("/if-keep", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "content": content })
+        headers: { 'Content-Type': 'text/plain' },
+        body: content
     });
     const markedContent = await marked.parse(res.content, { renderer });
     return [null, res, markedContent];
@@ -78,8 +84,8 @@ export async function ifBE(messages: string[]): Promise<ExtendResp> {
     const content = `当前剧情\n${messages.slice(0, -1).join("\n")}\n用户的选择\n${messages.at(-1)}`
     const res = await fetchText("/if-be", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "content": content })
+        headers: { 'Content-Type': 'text/plain' },
+        body: content
     });
     const markedContent = await marked.parse(res, { renderer });
     return [null, { title: "Bad End", content: res, options: [], incorrect: -1 }, markedContent];
@@ -89,8 +95,8 @@ export async function ifHE(messages: string[]): Promise<ExtendResp> {
     const content = `当前剧情\n${messages.slice(0, -1).join("\n")}\n用户的选择\n${messages.at(-1)}`
     const res = await fetchText("/if-he", {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "content": content })
+        headers: { 'Content-Type': 'text/plain' },
+        body: content
     });
     const markedContent = await marked.parse(res, { renderer });
     return [null, { title: "Happy End", content: res, options: [], incorrect: -1 }, markedContent];
