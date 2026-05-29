@@ -39,11 +39,12 @@ app.use('*', cors({
 
 app.post('/if-start', async (c) => {
     try {
-        const theme = await c.req.text();
-        if (!theme) { return c.json({ error: 'The "theme" field is missing in the request body.' }, 400); }
+        const content = await c.req.text();
+        if (!content) { return c.json({ error: 'Request body cannot be empty.' }, 400); }
+        if (content.length > 1000) { return c.json({ error: 'Request body cannot be longer than 1,000 characters.' }, 400); }
         const resp = await callApi<ResponseData>(c.env, {
             model: "",
-            messages: [{ role: "system", content: createPrompt }, { role: "user", content: theme }],
+            messages: [{ role: "system", content: createPrompt }, { role: "user", content: content }],
             response_format: { type: "json_object", }
         }, (r: any) => JSON.parse(r.choices[0].message.content));
         resp.incorrect = -1;
@@ -57,7 +58,8 @@ app.post('/if-start', async (c) => {
 app.post('/if-keep', async (c) => {
     try {
         let content = await c.req.text();
-        if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
+        if (!content) { return c.json({ error: 'Request body cannot be empty.' }, 400); }
+        if (content.length > 100000) { return c.json({ error: 'Request body cannot be longer than 100,000 characters.' }, 400); }
         const incorrect = Math.floor(Math.random() * 3);
         const resp = await callApi<ResponseData>(c.env, {
             model: "",
@@ -79,7 +81,8 @@ app.post('/if-keep', async (c) => {
 app.post('/if-be', async (c) => {
     try {
         const content = await c.req.text();
-        if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
+        if (!content) { return c.json({ error: 'Request body cannot be empty.' }, 400); }
+        if (content.length > 100000) { return c.json({ error: 'Request body cannot be longer than 100,000 characters.' }, 400); }
         const resp = await callApi<string>(c.env, {
             model: "",
             messages: [{ role: "system", content: bePrompt }, { role: "user", content: content }],
@@ -93,7 +96,8 @@ app.post('/if-be', async (c) => {
 app.post('/if-he', async (c) => {
     try {
         const content = await c.req.text();
-        if (!content) { return c.json({ error: 'The "content" field is missing in the request body.' }, 400); }
+        if (!content) { return c.json({ error: 'Request body cannot be empty.' }, 400); }
+        if (content.length > 100000) { return c.json({ error: 'Request body cannot be longer than 100,000 characters.' }, 400); }
         const resp = await callApi<string>(c.env, {
             model: "",
             messages: [{ role: "system", content: hePrompt }, { role: "user", content: content }],
@@ -106,10 +110,12 @@ app.post('/if-he', async (c) => {
 
 app.post('/generate-colors', async (c) => {
     try {
-        const story = await c.req.text();
+        const content = await c.req.text();
+        if (!content) { return c.json({ error: 'Request body cannot be empty.' }, 400); }
+        if (content.length > 10000) { return c.json({ error: 'Request body cannot be longer than 10,000 characters.' }, 400); }
         const resp = await callApi<string>(c.env, {
             model: "",
-            messages: [{ role: "system", content: themePrompt }, { role: "user", content: story }],
+            messages: [{ role: "system", content: themePrompt }, { role: "user", content: content }],
             response_format: { type: "json_object", }
         }, (r: any) => r.choices[0].message.content);
         return c.newResponse(resp, 200, { 'Content-Type': 'application/json' });

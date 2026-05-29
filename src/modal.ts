@@ -58,6 +58,8 @@ export function aboutTemplate(modal = creatModal().modal) {
     <a
         href=" https://qun.qq.com/universal-share/share?ac=1&authKey=Iq8lDUYcAI8SG0HN%2FKvL5pJ73t7PKP2rMAB6qNEi99NbICjplNnMyticRq3p0XU8&busi_data=eyJncm91cENvZGUiOiI3NDQ3NTExNzkiLCJ0b2tlbiI6IkFSRDFFbXB4YkgyNXZhVk54Ti91cmMzTzB3WU1OTzdJajRxSWxHRExzYTQrV1p1a1FYS3hoYm1aRGJQeVpVU0UiLCJ1aW4iOiIxMDQ4ODI3NDI0In0%3D&data=7NPR3RM7asHobWOB7K7CN8Y3xakqhQjBx160Xocnxt960S2Yo82Ce1erDIfMh4qHD4pJBxeQqUSMvHfozpsyVQ&svctype=4&tempid=h5_group_info"
         class="option-card"
+        target="_blank"
+        rel="noopener noreferrer"
     >
         <div class="card-icon">🎉</div>
         <div class="card-content">
