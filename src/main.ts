@@ -2,6 +2,7 @@ import './styles/main.css';
 import './styles/sidebar.css';
 import './styles/modal.css';
 import md5 from 'blueimp-md5';
+import { openDB } from "idb";
 import type { ExtendResp } from './core';
 import { ifSTART, ifKEEP, ifBE, ifHE, generateColorsByStory, viewImageById, generateImageByContent } from './core';
 import { creatModal, configTemplate, aboutTemplate } from './modal';
@@ -23,40 +24,45 @@ type IFHistory = {
   innerHTML: string,
   he?: true,
 }
-type IFHistorys = { [key: string]: IFHistory }
+const DB_NAME = "IFDB";
+const STORE_NAME = "histories";
+const dbPromise = openDB(DB_NAME, 1, {
+  upgrade(db) {
+    if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME); }
+  },
+});
+
+async function getHistoryByID(id: string): Promise<IFHistory | undefined> {
+  try {
+    const db = await dbPromise;
+    const history = await db.get(STORE_NAME, id);
+    return history; // 如果找不到，idb 默认返回 undefined
+  } catch (e) {
+    console.error("Failed to get history by ID:", e);
+    return undefined;
+  }
+}
+
+async function deleteHistoryByID(id: string): Promise<boolean> {
+  try {
+    const db = await dbPromise;
+    await db.delete(STORE_NAME, id);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function updateHistory(history: IFHistory): Promise<void> {
+  try {
+    const db = await dbPromise;
+    await db.put(STORE_NAME, history);
+  } catch (e) {
+    console.error("Failed to save history:", e);
+  }
+}
 
 let currentIFThemeID: string = '';
-
-function getHistoryByID(id: string) {
-  const rawData = localStorage.getItem('history');
-  if (!rawData) return undefined
-  try {
-    const ifHistorys: IFHistorys = JSON.parse(rawData);
-    return ifHistorys[id];
-  } catch (e) {
-    localStorage.removeItem('history');
-    return undefined
-  }
-}
-
-function getHistorys(): IFHistorys | void {
-  const rawData = localStorage.getItem('history');
-  if (!rawData) return;
-  try {
-    return JSON.parse(rawData);
-  } catch (e) {
-    localStorage.removeItem('history');
-    return
-  }
-}
-
-function saveHistory(history: IFHistory) {
-  let historys = getHistorys();
-  if (historys) { historys[history.id] = history; }
-  else { historys = { [history.id]: history }; }
-  localStorage.setItem('history', JSON.stringify(historys));
-}
-
 function createWelcomeScreen() {
   const welcomeScreen = document.createElement('div');
   welcomeScreen.className = 'welcome-screen';
@@ -211,9 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const moreBtn = document.createElement('button');
     moreBtn.className = 'sidebar-button'
     moreBtn.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
-    moreBtn.onclick = (e) => {
+    moreBtn.onclick = async (e) => {
       e.stopPropagation();
-      const history = getHistoryByID(ifThemeID);
+      const history = await getHistoryByID(ifThemeID);
       if (!history) { alert("当前IF主题已丢失"); return; }
       const { backdrop, modal } = creatModal();
       const content = document.createElement("div");
@@ -223,31 +229,31 @@ document.addEventListener('DOMContentLoaded', () => {
       let [endCard, nextEndCard, endCardClassName, nextEndCardClassName] = history.he ? [endCardB, endCardA, 'option-card active', 'option-card'] : [endCardA, endCardB, 'option-card', 'option-card active'];
       endBtn.className = endCardClassName;
       endBtn.innerHTML = endCard;
-      endBtn.onclick = () => {
+      endBtn.onclick = async () => {
         endBtn.innerHTML = nextEndCard;
         endBtn.className = nextEndCardClassName;
         [endCard, nextEndCard] = [nextEndCard, endCard];
         [endCardClassName, nextEndCardClassName] = [nextEndCardClassName, endCardClassName];
-        const newHistory = getHistoryByID(history.id) || history;
+        const newHistory = await getHistoryByID(history.id) || history;
         if (newHistory.he) { delete newHistory.he; }
         else { newHistory.he = true; }
-        saveHistory(newHistory);
+        updateHistory(newHistory);
       }
       const colorBtn = document.createElement('div');
       [colorBtn.innerHTML, colorBtn.className] = generateColorsFlag ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
-      colorBtn.onclick = () => {
+      colorBtn.onclick = async () => {
         if (generateColorsFlag) return;
         generateColorsFlag = true;
         colorBtn.innerHTML = colorCardB;
         colorBtn.classList.add('active');
-        const newHistory = getHistoryByID(history.id) || history;
+        const newHistory = await getHistoryByID(history.id) || history;
         const story = newHistory.messages.at(-1)
         if (!story) return;
-        generateColorsByStory(story).then(colors => {
+        generateColorsByStory(story).then(async (colors) => {
           if (colors.length != 5) return;
-          const new2History = getHistoryByID(history.id) || newHistory;
+          const new2History = await getHistoryByID(history.id) || newHistory;
           new2History.colors = colors;
-          saveHistory(new2History);
+          updateHistory(new2History);
           if (currentIFThemeID === new2History.id) {
             themeVars.forEach((varName, index) => {
               document.documentElement.style.setProperty(varName, colors[index]);
@@ -268,13 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
         generateImageFlag = true;
         imageBtn.innerHTML = imageCardB;
         imageBtn.classList.add('active');
-        generateImageByContent(content).then(promptId => {
-          viewImage(promptId, (image) => {
-            const newHistory = getHistoryByID(history.id) || history;
+        generateImageByContent(content).then((prompt_id) => {
+          viewImage(prompt_id, async (image) => {
+            const newHistory = await getHistoryByID(history.id) || history;
             newHistory.image = image;
-            saveHistory(newHistory);
-            if (newHistory.id !== currentIFThemeID) { return; }
-            base64ToBlobUrl
+            updateHistory(newHistory);
+            if (newHistory.id !== currentIFThemeID) return;
             mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
             mainContainer.classList.add('has-image');
           }).finally(() => {
@@ -298,11 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="card-desc">此操作将永久删除该剧本</div>
     </div>`;
       deleteBtn.onclick = () => {
-        const historys = getHistorys();
-        if (historys) {
-          delete historys![history.id];
-          localStorage.setItem('history', JSON.stringify(historys));
-        }
+        deleteHistoryByID(history.id)
         IFHistoryItem.remove();
         backdrop.remove();
         newFiction()
@@ -318,16 +319,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return IFHistoryItem;
   }
 
-  function renderHistory() {
+  async function renderHistory() {
     historyContainer.innerHTML = '';
-    const ifHistorys = getHistorys();
-    if (ifHistorys) {
-      for (const key in ifHistorys) {
-        const history = ifHistorys[key];
-        const IFHistoryItem = createHistoryItem(key, history.title);
-        IFHistoryItem.onclick = () => { selectHistory(getHistoryByID(key) || history); };
+    const db = await dbPromise;
+    const allList: IFHistory[] = await db.getAll(STORE_NAME);
+    if (allList.length > 0) {
+      allList.forEach(history => {
+        const IFHistoryItem = createHistoryItem(history.id, history.title);
+        IFHistoryItem.onclick = async () => { selectHistory(await getHistoryByID(history.id) || history); };
         historyContainer.appendChild(IFHistoryItem);
-      }
+      });
+
     } else {
       historyContainer.appendChild(createEmptyHistory());
     }
@@ -403,11 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: IFHistory, rendering: boolean) {
     const [promptId, resp_data, markedContent] = resp;
     if (promptId) {
-      viewImage(promptId, (image) => {
-        const newHistory = getHistoryByID(history.id) || history;
+      viewImage(promptId, async (image) => {
+        const newHistory = await getHistoryByID(history.id) || history;
         newHistory.image = image;
-        saveHistory(newHistory);
-        if (newHistory.id !== currentIFThemeID) { return; }
+        updateHistory(newHistory);
+        if (newHistory.id !== currentIFThemeID) return;
         mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
         mainContainer.classList.add('has-image');
       }).finally(() => { generateImageFlag = false; });
@@ -422,11 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
       history.messages.push(resp_data.content);
     }
     history.innerHTML += ifContent.outerHTML;
-    saveHistory(history);
+    updateHistory(history);
     if (rendering) { selectHistory(history); }
   }
   const selectOptionFlag = new Map<string, true>();
-  function selectOption(option: string, be: boolean, ifThemeID: string) {
+  async function selectOption(option: string, be: boolean, ifThemeID: string) {
     if (selectOptionFlag.has(ifThemeID)) return;
     selectOptionFlag.set(ifThemeID, true);
     const ifContent = document.createElement('div');
@@ -436,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <i class="fa-solid fa-trash" ></i>
     </button>
     <p>${option}</p>`;
-    const history = getHistoryByID(ifThemeID)
+    const history = await getHistoryByID(ifThemeID)
     if (!history) {
       alert("当前IF主题已丢失");
       selectOptionFlag.delete(ifThemeID);
@@ -526,23 +528,26 @@ document.addEventListener('DOMContentLoaded', () => {
       selectOption(option, Boolean(select && incorrect) && (select === incorrect), currentIFThemeID);
       return;
     } else if (target.closest('.select-back')) {
-      const history = getHistoryByID(currentIFThemeID);
-      if (!history) return;
-      const ifContent = contentArea.lastElementChild;
-      if (!ifContent) return;
-      ifContent.remove();
-      history.messages.length = contentArea.children.length * 2 - 1;
-      history.innerHTML = contentArea.innerHTML;
-      delete history.he;
-      saveHistory(history);
-      selectHistory(history);
-      return;
+      getHistoryByID(currentIFThemeID).then((history) => {
+        if (!history) return;
+        if (history.id !== currentIFThemeID) return;
+        const ifContent = contentArea.lastElementChild;
+        if (!ifContent) return;
+        ifContent.remove();
+        history.messages.length = contentArea.children.length * 2 - 1;
+        history.innerHTML = contentArea.innerHTML;
+        delete history.he;
+        updateHistory(history);
+        selectHistory(history);
+        return;
+      })
     }
 
   };
-  contentArea.onclick = (e) => {
-    const history = getHistoryByID(currentIFThemeID);
+  contentArea.onclick = async (e) => {
+    const history = await getHistoryByID(currentIFThemeID);
     if (!history) return;
+    if (history.id !== currentIFThemeID) return;
     if (selectOptionFlag.has(history.id)) return;
     const target = e.target as HTMLElement;
     const deleteBtn = target.closest('.delete-this');
@@ -555,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ifContent.remove();
     history.messages.length = contentArea.children.length * 2 - 1;
     history.innerHTML = contentArea.innerHTML;
-    saveHistory(history);
+    updateHistory(history);
     console.log(history.messages);
     const options = lastOptions();
     if (options) renderOptions(options)
