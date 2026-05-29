@@ -23,6 +23,8 @@ type IFHistory = {
   innerHTML: string,
   he?: true,
 }
+type SavedIFHistory = IFHistory & { id: number }
+
 const DB_NAME = "IFDB";
 const STORE_NAME = "histories";
 const dbPromise = openDB(DB_NAME, 1, {
@@ -33,7 +35,7 @@ const dbPromise = openDB(DB_NAME, 1, {
   },
 });
 
-async function getHistoryByID(id: number): Promise<IFHistory | undefined> {
+async function getHistoryByID(id: number): Promise<SavedIFHistory | undefined> {
   try {
     const db = await dbPromise;
     const history = await db.get(STORE_NAME, id);
@@ -222,8 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     moreBtn.onclick = async (e) => {
       e.stopPropagation();
       const history = await getHistoryByID(ifThemeID);
-      const historyID = history?.id;
-      if (!history || historyID === undefined) { alert("当前IF主题已丢失"); return; }
+      if (!history) { alert("当前IF主题已丢失"); return; }
       const { backdrop, modal } = creatModal();
       const content = document.createElement("div");
       content.className = "modal-content";
@@ -237,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         endBtn.className = nextEndCardClassName;
         [endCard, nextEndCard] = [nextEndCard, endCard];
         [endCardClassName, nextEndCardClassName] = [nextEndCardClassName, endCardClassName];
-        const newHistory = await getHistoryByID(historyID) || history;
+        const newHistory = await getHistoryByID(history.id) || history;
         if (newHistory.he) { delete newHistory.he; }
         else { newHistory.he = true; }
         updateHistory(newHistory);
@@ -249,12 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
         generateColorsFlag = true;
         colorBtn.innerHTML = colorCardB;
         colorBtn.classList.add('active');
-        const newHistory = await getHistoryByID(historyID) || history;
+        const newHistory = await getHistoryByID(history.id) || history;
         const story = newHistory.messages.at(-1)
         if (!story) return;
         generateColorsByStory(story).then(async (colors) => {
           if (colors.length != 5) return;
-          const new2History = await getHistoryByID(historyID) || newHistory;
+          const new2History = await getHistoryByID(history.id) || newHistory;
           new2History.colors = colors;
           updateHistory(new2History);
           if (currentIFThemeID === new2History.id) {
@@ -278,12 +279,13 @@ document.addEventListener('DOMContentLoaded', () => {
         imageBtn.innerHTML = imageCardB;
         imageBtn.classList.add('active');
         generateImageByContent(content).then((prompt_id) => {
+          const imageId = history.id.toString()
           viewImage(prompt_id, async (image) => {
-            const newHistory = await getHistoryByID(historyID) || history;
+            const newHistory = await getHistoryByID(history.id) || history;
             newHistory.image = image;
             updateHistory(newHistory);
-            if (historyID !== currentIFThemeID) return;
-            mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), newHistory.image)})`);
+            if (history.id !== currentIFThemeID) return;
+            mainContainer.style.setProperty('--bg-image', `url(${getImageById(imageId, newHistory.image)})`);
             mainContainer.classList.add('has-image');
           }).finally(() => {
             generateImageFlag = false;
@@ -306,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="card-desc">此操作将永久删除该剧本</div>
     </div>`;
       deleteBtn.onclick = () => {
-        deleteHistoryByID(historyID)
+        deleteHistoryByID(history.id)
         IFHistoryItem.remove();
         backdrop.remove();
         newFiction()
@@ -325,13 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
   async function renderHistory() {
     historyContainer.innerHTML = '';
     const db = await dbPromise;
-    const allList: IFHistory[] = await db.getAll(STORE_NAME);
+    const allList: SavedIFHistory[] = await db.getAll(STORE_NAME);
     if (allList.length > 0) {
       allList.forEach(history => {
-        const historyID = history.id;
-        if (historyID === undefined) return;
-        const IFHistoryItem = createHistoryItem(historyID, history.title);
-        IFHistoryItem.onclick = async () => { selectHistory(await getHistoryByID(historyID) || history); };
+        const IFHistoryItem = createHistoryItem(history.id, history.title);
+        IFHistoryItem.onclick = async () => { selectHistory(await getHistoryByID(history.id) || history); };
         historyContainer.appendChild(IFHistoryItem);
       });
 
@@ -365,21 +365,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function lastIncorrect(): string | void {
     return (contentArea.lastElementChild as HTMLElement)?.dataset?.incorrect;
   }
-  function selectHistory(history: IFHistory) {
-    const historyID = history.id;
-    if (!history || historyID === undefined) { alert("Invalid history"); return; }
+  function selectHistory(history: SavedIFHistory) {
     themeVars.forEach((varName, index) => {
       document.documentElement.style.setProperty(varName, history.colors[index]);
     });
     if (history.image) {
-      mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), history.image)})`);
+      mainContainer.style.setProperty('--bg-image', `url(${getImageById(history.id.toString(), history.image)})`);
       mainContainer.classList.add('has-image');
     } else {
       mainContainer.style.removeProperty('--bg-image');
       mainContainer.classList.remove('has-image');
     }
     contentArea.innerHTML = history.innerHTML;
-    currentIFThemeID = historyID;
+    currentIFThemeID = history.id;
     const options = lastOptions();
     renderOptions(options);
     // mainContainer.scrollTop = mainContainer.scrollHeight;
@@ -409,17 +407,16 @@ document.addEventListener('DOMContentLoaded', () => {
       inputArea.classList.add('hidden');
     }
   }
-  function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: IFHistory, rendering: boolean) {
+  function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: SavedIFHistory, rendering: boolean) {
     const [promptId, resp_data, markedContent] = resp;
-    const historyID = history.id;
-    if (historyID === undefined) return;
     if (promptId) {
+      const imageId = history.id.toString()
       viewImage(promptId, async (image) => {
-        const newHistory = await getHistoryByID(historyID) || history;
+        const newHistory = await getHistoryByID(history.id) || history;
         newHistory.image = image;
         updateHistory(newHistory);
         if (newHistory.id !== currentIFThemeID) return;
-        mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), newHistory.image)})`);
+        mainContainer.style.setProperty('--bg-image', `url(${getImageById(imageId, newHistory.image)})`);
         mainContainer.classList.add('has-image');
       }).finally(() => { generateImageFlag = false; });
     } else { generateImageFlag = false; }
@@ -500,15 +497,16 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput.value = "";
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
-        const history: IFHistory = {
+        const ifThemeID = await updateHistory({
           messages: [],
           image: null,
           title: resp[1].title,
           colors: colors,
           innerHTML: ""
-        };
-        const ifThemeID = await updateHistory(history)
+        })
         if (!ifThemeID) return;
+        const history = await getHistoryByID(ifThemeID)
+        if (!history) return;
         const rendering = currentIFThemeID === undefined;
         currentIFThemeID = ifThemeID;
         if (rendering) { contentArea.innerHTML = "" }
