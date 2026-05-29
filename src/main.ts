@@ -1,7 +1,6 @@
 import './styles/main.css';
 import './styles/sidebar.css';
 import './styles/modal.css';
-import md5 from 'blueimp-md5';
 import { openDB } from "idb";
 import type { ExtendResp } from './core';
 import { ifSTART, ifKEEP, ifBE, ifHE, generateColorsByStory, viewImageById, generateImageByContent } from './core';
@@ -16,7 +15,7 @@ const themeVars = [
 ]
 
 type IFHistory = {
-  id: string,
+  id?: number,
   messages: string[],
   image: string | null,
   title: string,
@@ -28,11 +27,13 @@ const DB_NAME = "IFDB";
 const STORE_NAME = "histories";
 const dbPromise = openDB(DB_NAME, 1, {
   upgrade(db) {
-    if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME); }
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+    }
   },
 });
 
-async function getHistoryByID(id: string): Promise<IFHistory | undefined> {
+async function getHistoryByID(id: number): Promise<IFHistory | undefined> {
   try {
     const db = await dbPromise;
     const history = await db.get(STORE_NAME, id);
@@ -43,7 +44,7 @@ async function getHistoryByID(id: string): Promise<IFHistory | undefined> {
   }
 }
 
-async function deleteHistoryByID(id: string): Promise<boolean> {
+async function deleteHistoryByID(id: number): Promise<boolean> {
   try {
     const db = await dbPromise;
     await db.delete(STORE_NAME, id);
@@ -53,16 +54,18 @@ async function deleteHistoryByID(id: string): Promise<boolean> {
   }
 }
 
-async function updateHistory(history: IFHistory): Promise<void> {
+async function updateHistory(history: IFHistory): Promise<number | undefined> {
   try {
     const db = await dbPromise;
-    await db.put(STORE_NAME, history);
+    const key = await db.put(STORE_NAME, history);
+    return key as number;
   } catch (e) {
     console.error("Failed to save history:", e);
+    return undefined;
   }
 }
 
-let currentIFThemeID: string = '';
+let currentIFThemeID: number | undefined = undefined;
 function createWelcomeScreen() {
   const welcomeScreen = document.createElement('div');
   welcomeScreen.className = 'welcome-screen';
@@ -207,10 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarHeader.classList.add('expanded');
     }
   };
-  function createHistoryItem(ifThemeID: string, title: string) {
+  function createHistoryItem(ifThemeID: number, title: string) {
     const IFHistoryItem = document.createElement('div');
     IFHistoryItem.className = 'history-item';
-    IFHistoryItem.id = ifThemeID;
     const titleSpan = document.createElement('span');
     titleSpan.className = 'history-item-title';
     titleSpan.textContent = title;
@@ -220,7 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
     moreBtn.onclick = async (e) => {
       e.stopPropagation();
       const history = await getHistoryByID(ifThemeID);
-      if (!history) { alert("当前IF主题已丢失"); return; }
+      const historyID = history?.id;
+      if (!history || historyID === undefined) { alert("当前IF主题已丢失"); return; }
       const { backdrop, modal } = creatModal();
       const content = document.createElement("div");
       content.className = "modal-content";
@@ -234,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         endBtn.className = nextEndCardClassName;
         [endCard, nextEndCard] = [nextEndCard, endCard];
         [endCardClassName, nextEndCardClassName] = [nextEndCardClassName, endCardClassName];
-        const newHistory = await getHistoryByID(history.id) || history;
+        const newHistory = await getHistoryByID(historyID) || history;
         if (newHistory.he) { delete newHistory.he; }
         else { newHistory.he = true; }
         updateHistory(newHistory);
@@ -246,12 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
         generateColorsFlag = true;
         colorBtn.innerHTML = colorCardB;
         colorBtn.classList.add('active');
-        const newHistory = await getHistoryByID(history.id) || history;
+        const newHistory = await getHistoryByID(historyID) || history;
         const story = newHistory.messages.at(-1)
         if (!story) return;
         generateColorsByStory(story).then(async (colors) => {
           if (colors.length != 5) return;
-          const new2History = await getHistoryByID(history.id) || newHistory;
+          const new2History = await getHistoryByID(historyID) || newHistory;
           new2History.colors = colors;
           updateHistory(new2History);
           if (currentIFThemeID === new2History.id) {
@@ -276,11 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
         imageBtn.classList.add('active');
         generateImageByContent(content).then((prompt_id) => {
           viewImage(prompt_id, async (image) => {
-            const newHistory = await getHistoryByID(history.id) || history;
+            const newHistory = await getHistoryByID(historyID) || history;
             newHistory.image = image;
             updateHistory(newHistory);
-            if (newHistory.id !== currentIFThemeID) return;
-            mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
+            if (historyID !== currentIFThemeID) return;
+            mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), newHistory.image)})`);
             mainContainer.classList.add('has-image');
           }).finally(() => {
             generateImageFlag = false;
@@ -303,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="card-desc">此操作将永久删除该剧本</div>
     </div>`;
       deleteBtn.onclick = () => {
-        deleteHistoryByID(history.id)
+        deleteHistoryByID(historyID)
         IFHistoryItem.remove();
         backdrop.remove();
         newFiction()
@@ -325,8 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const allList: IFHistory[] = await db.getAll(STORE_NAME);
     if (allList.length > 0) {
       allList.forEach(history => {
-        const IFHistoryItem = createHistoryItem(history.id, history.title);
-        IFHistoryItem.onclick = async () => { selectHistory(await getHistoryByID(history.id) || history); };
+        const historyID = history.id;
+        if (historyID === undefined) return;
+        const IFHistoryItem = createHistoryItem(historyID, history.title);
+        IFHistoryItem.onclick = async () => { selectHistory(await getHistoryByID(historyID) || history); };
         historyContainer.appendChild(IFHistoryItem);
       });
 
@@ -341,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     contentArea.appendChild(createWelcomeScreen());
     messageInput.value = "";
     messageInput.placeholder = "请输入要创建的互动小说主题";
-    currentIFThemeID = '';
+    currentIFThemeID = undefined;
     themeVars.forEach((varName) => {
       document.documentElement.style.removeProperty(varName);
     });
@@ -361,18 +366,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return (contentArea.lastElementChild as HTMLElement)?.dataset?.incorrect;
   }
   function selectHistory(history: IFHistory) {
+    const historyID = history.id;
+    if (!history || historyID === undefined) { alert("Invalid history"); return; }
     themeVars.forEach((varName, index) => {
       document.documentElement.style.setProperty(varName, history.colors[index]);
     });
     if (history.image) {
-      mainContainer.style.setProperty('--bg-image', `url(${getImageById(history.id, history.image)})`);
+      mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), history.image)})`);
       mainContainer.classList.add('has-image');
     } else {
       mainContainer.style.removeProperty('--bg-image');
       mainContainer.classList.remove('has-image');
     }
     contentArea.innerHTML = history.innerHTML;
-    currentIFThemeID = history.id;
+    currentIFThemeID = historyID;
     const options = lastOptions();
     renderOptions(options);
     // mainContainer.scrollTop = mainContainer.scrollHeight;
@@ -404,13 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: IFHistory, rendering: boolean) {
     const [promptId, resp_data, markedContent] = resp;
+    const historyID = history.id;
+    if (historyID === undefined) return;
     if (promptId) {
       viewImage(promptId, async (image) => {
-        const newHistory = await getHistoryByID(history.id) || history;
+        const newHistory = await getHistoryByID(historyID) || history;
         newHistory.image = image;
         updateHistory(newHistory);
         if (newHistory.id !== currentIFThemeID) return;
-        mainContainer.style.setProperty('--bg-image', `url(${getImageById(newHistory.id, newHistory.image)})`);
+        mainContainer.style.setProperty('--bg-image', `url(${getImageById(historyID.toString(), newHistory.image)})`);
         mainContainer.classList.add('has-image');
       }).finally(() => { generateImageFlag = false; });
     } else { generateImageFlag = false; }
@@ -427,8 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHistory(history);
     if (rendering) { selectHistory(history); }
   }
-  const selectOptionFlag = new Map<string, true>();
-  async function selectOption(option: string, be: boolean, ifThemeID: string) {
+  const selectOptionFlag = new Map<number, true>();
+  async function selectOption(option: string, be: boolean, ifThemeID: number) {
     if (selectOptionFlag.has(ifThemeID)) return;
     selectOptionFlag.set(ifThemeID, true);
     const ifContent = document.createElement('div');
@@ -473,13 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
   sendBtn.onclick = () => {
     const message = messageInput.value.trim();
     if (message.length < 1) return;
-    if (currentIFThemeID) {
+    if (currentIFThemeID !== undefined) {
       messageInput.value = "";
       selectOption(message, false, currentIFThemeID);
     } else {
       sendBtn.disabled = true;
-      currentIFThemeID = `IF${Date.now()}${md5(message)} `;
-      const iFThemeID = currentIFThemeID;
       const welcomeText = document.getElementById('welcomeText');
       if (welcomeText) {
         welcomeText.classList.add('loading');
@@ -489,19 +496,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       generateColorsFlag = true;
       generateImageFlag = true;
-      ifSTART(message).then(([resp, colors]) => {
+      ifSTART(message).then(async ([resp, colors]) => {
         messageInput.value = "";
         const ifContent = document.createElement('div');
         ifContent.className = 'if-content';
         const history: IFHistory = {
-          id: iFThemeID,
           messages: [],
           image: null,
           title: resp[1].title,
           colors: colors,
           innerHTML: ""
         };
-        const rendering = iFThemeID === currentIFThemeID
+        const ifThemeID = await updateHistory(history)
+        if (!ifThemeID) return;
+        const rendering = currentIFThemeID === undefined;
+        currentIFThemeID = ifThemeID;
         if (rendering) { contentArea.innerHTML = "" }
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
@@ -517,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   selectArea.onclick = (e) => {
+    if (currentIFThemeID === undefined) return;
     const target = e.target as HTMLElement;
     let selectItem: HTMLElement | null;
     if (selectItem = target.closest('.select-item')) {
@@ -545,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   };
   contentArea.onclick = async (e) => {
+    if (currentIFThemeID === undefined) return;
     const history = await getHistoryByID(currentIFThemeID);
     if (!history) return;
     if (history.id !== currentIFThemeID) return;
