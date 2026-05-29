@@ -13,6 +13,23 @@ const themeVars = [
   '--sidebar-bg-color',
   '--border-color'
 ]
+type IFStatus = {
+  generateColor: boolean,
+  generateImage: boolean,
+  selectOption: boolean
+  imageBlobURL?: string,
+}
+const buttonStatusFlagMap = new Map<number, IFStatus>();
+function getIFStatus(id: number) {
+  if (!buttonStatusFlagMap.has(id)) {
+    buttonStatusFlagMap.set(id, {
+      generateColor: false,
+      generateImage: false,
+      selectOption: false,
+    });
+  }
+  return buttonStatusFlagMap.get(id)!;
+}
 
 type IFHistory = {
   id?: number,
@@ -24,7 +41,6 @@ type IFHistory = {
   he?: true,
 }
 type SavedIFHistory = IFHistory & { id: number }
-
 const DB_NAME = "IFDB";
 const STORE_NAME = "histories";
 const dbPromise = openDB(DB_NAME, 1, {
@@ -85,9 +101,6 @@ function createWelcomeScreen() {
   welcomeScreen.appendChild(welcomeText);
   return welcomeScreen;
 }
-
-let generateColorsFlag = false;
-let generateImageFlag = false;
 
 const endCardA = `\
 <div class="card-content">
@@ -162,23 +175,17 @@ async function viewImage(prompt_id: string, callback: (result: string) => void) 
   }
 }
 
-function base64ToBlobUrl(base64Data: string, mimeType: string = 'image/png'): string {
+function base64ToBlob(base64Data: string, mimeType: string = 'image/png'): Blob {
   const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
   for (let i = 0; i < byteCharacters.length; i++) {
     byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
   const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: mimeType });
-  return URL.createObjectURL(blob);
+  return new Blob([byteArray], { type: mimeType });
 }
 
-const imageBlobs = new Map<string, string>();
 
-function getImageById(id: string, b64: string) {
-  if (!imageBlobs.has(id)) { imageBlobs.set(id, base64ToBlobUrl(b64)); }
-  return imageBlobs.get(id)!;
-}
 
 
 
@@ -212,6 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebarHeader.classList.add('expanded');
     }
   };
+
+
   function createHistoryItem(ifThemeID: number, title: string) {
     const IFHistoryItem = document.createElement('div');
     IFHistoryItem.className = 'history-item';
@@ -225,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const history = await getHistoryByID(ifThemeID);
       if (!history) { alert("当前IF主题已丢失"); return; }
+      const ifStatus = getIFStatus(ifThemeID);
       const { backdrop, modal } = creatModal();
       const content = document.createElement("div");
       content.className = "modal-content";
@@ -244,10 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHistory(newHistory);
       }
       const colorBtn = document.createElement('div');
-      [colorBtn.innerHTML, colorBtn.className] = generateColorsFlag ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
+      [colorBtn.innerHTML, colorBtn.className] = ifStatus.generateColor ? [colorCardB, 'option-card active'] : [colorCardA, 'option-card'];
       colorBtn.onclick = async () => {
-        if (generateColorsFlag) return;
-        generateColorsFlag = true;
+        if (ifStatus.generateColor) return;
+        ifStatus.generateColor = true;
         colorBtn.innerHTML = colorCardB;
         colorBtn.classList.add('active');
         const newHistory = await getHistoryByID(history.id) || history;
@@ -266,35 +276,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }).finally(() => {
           colorBtn.innerHTML = colorCardA;
           colorBtn.classList.remove('active');
-          generateColorsFlag = false
+          ifStatus.generateColor = false
         });
       }
       const imageBtn = document.createElement('div');
-      [imageBtn.innerHTML, imageBtn.className] = generateImageFlag ? [imageCardB, 'option-card active'] : [imageCardA, 'option-card'];
+      [imageBtn.innerHTML, imageBtn.className] = ifStatus.generateImage ? [imageCardB, 'option-card active'] : [imageCardA, 'option-card'];
       imageBtn.onclick = () => {
-        if (generateImageFlag) return;
+        if (ifStatus.generateImage) return;
         const content = history.messages.at(-1)
         if (!content) return;
-        generateImageFlag = true;
+        ifStatus.generateImage = true;
         imageBtn.innerHTML = imageCardB;
         imageBtn.classList.add('active');
         generateImageByContent(content).then((prompt_id) => {
-          const imageId = history.id.toString()
           viewImage(prompt_id, async (image) => {
             const newHistory = await getHistoryByID(history.id) || history;
             newHistory.image = image;
             updateHistory(newHistory);
             if (history.id !== currentIFThemeID) return;
-            mainContainer.style.setProperty('--bg-image', `url(${getImageById(imageId, newHistory.image)})`);
+            ifStatus.imageBlobURL = ifStatus.imageBlobURL || URL.createObjectURL(base64ToBlob(image))
+            mainContainer.style.setProperty('--bg-image', `url(${ifStatus.imageBlobURL!})`);
             mainContainer.classList.add('has-image');
           }).finally(() => {
-            generateImageFlag = false;
+            ifStatus.generateImage = false;
             imageBtn.innerHTML = imageCardA;
             imageBtn.classList.remove('active');
           })
         }
         ).catch(() => {
-          generateImageFlag = false;
+          ifStatus.generateImage = false;
           imageBtn.innerHTML = imageCardA;
           imageBtn.classList.remove('active');
         }
@@ -342,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function newFiction() {
     contentArea.innerHTML = "";
     selectArea.innerHTML = "";
-    inputArea.classList.remove('hidden');
+    inputArea.className = "input-area";
     contentArea.appendChild(createWelcomeScreen());
     messageInput.value = "";
     messageInput.placeholder = "请输入要创建的互动小说主题";
@@ -370,7 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.style.setProperty(varName, history.colors[index]);
     });
     if (history.image) {
-      mainContainer.style.setProperty('--bg-image', `url(${getImageById(history.id.toString(), history.image)})`);
+      const ifStatus = getIFStatus(history.id);
+      ifStatus.imageBlobURL = ifStatus.imageBlobURL || URL.createObjectURL(base64ToBlob(history.image))
+      mainContainer.style.setProperty('--bg-image', `url(${ifStatus.imageBlobURL!})`);
       mainContainer.classList.add('has-image');
     } else {
       mainContainer.style.removeProperty('--bg-image');
@@ -383,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // mainContainer.scrollTop = mainContainer.scrollHeight;
   }
   function renderOptions(options: string[] | void) {
-    inputArea.classList.remove('hidden');
+    inputArea.className = "input-area";
     messageInput.placeholder = "输入接下来的剧情走向...";
     selectArea.innerHTML = '';
     if (options) {
@@ -409,17 +421,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: SavedIFHistory, rendering: boolean) {
     const [promptId, resp_data, markedContent] = resp;
+    const ifStatus = getIFStatus(history.id);
     if (promptId) {
-      const imageId = history.id.toString()
       viewImage(promptId, async (image) => {
+        if (ifStatus.imageBlobURL) { URL.revokeObjectURL(ifStatus.imageBlobURL); }
+        ifStatus.imageBlobURL = URL.createObjectURL(base64ToBlob(image))
         const newHistory = await getHistoryByID(history.id) || history;
         newHistory.image = image;
         updateHistory(newHistory);
         if (newHistory.id !== currentIFThemeID) return;
-        mainContainer.style.setProperty('--bg-image', `url(${getImageById(imageId, newHistory.image)})`);
+        mainContainer.style.setProperty('--bg-image', `url(${ifStatus.imageBlobURL!})`);
         mainContainer.classList.add('has-image');
-      }).finally(() => { generateImageFlag = false; });
-    } else { generateImageFlag = false; }
+      }).finally(() => { ifStatus.generateImage = false; });
+    } else { ifStatus.generateImage = false; }
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
     const options = resp_data.options;
@@ -433,10 +447,16 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHistory(history);
     if (rendering) { selectHistory(history); }
   }
-  const selectOptionFlag = new Map<number, true>();
   async function selectOption(option: string, be: boolean, ifThemeID: number) {
-    if (selectOptionFlag.has(ifThemeID)) return;
-    selectOptionFlag.set(ifThemeID, true);
+    const ifStatus = getIFStatus(ifThemeID);
+    if (ifStatus.selectOption) return;
+    const history = await getHistoryByID(ifThemeID)
+    if (!history) {
+      alert("当前IF主题已丢失");
+      ifStatus.selectOption = false;
+      return;
+    }
+    ifStatus.selectOption = true;
     const ifContent = document.createElement('div');
     ifContent.className = 'if-content';
     ifContent.innerHTML = `\
@@ -444,17 +464,11 @@ document.addEventListener('DOMContentLoaded', () => {
       <i class="fa-solid fa-trash" ></i>
     </button>
     <p>${option}</p>`;
-    const history = await getHistoryByID(ifThemeID)
-    if (!history) {
-      alert("当前IF主题已丢失");
-      selectOptionFlag.delete(ifThemeID);
-      return;
-    }
     history.messages.push(option);
     const func = be ? ifBE : (history.he ? ifHE : ifKEEP);
     func(history.messages).then((resp) => {
       renderResponse(resp, ifContent, history, ifThemeID === currentIFThemeID);
-    }).finally(() => { selectOptionFlag.delete(ifThemeID); });
+    }).finally(() => { ifStatus.selectOption = false; });
   }
   handleResize();
   renderHistory()
@@ -481,6 +495,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (message.length < 1) return;
     if (currentIFThemeID !== undefined) {
       messageInput.value = "";
+      messageInput.placeholder = message
+      inputArea.classList.add('selected');
       selectOption(message, false, currentIFThemeID);
     } else {
       sendBtn.disabled = true;
@@ -491,8 +507,6 @@ document.addEventListener('DOMContentLoaded', () => {
           child.classList.add('loading');
         }
       }
-      generateColorsFlag = true;
-      generateImageFlag = true;
       ifSTART(message).then(async ([resp, colors]) => {
         messageInput.value = "";
         const ifContent = document.createElement('div');
@@ -507,18 +521,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!ifThemeID) return;
         const history = await getHistoryByID(ifThemeID)
         if (!history) return;
+        const ifStatus = getIFStatus(ifThemeID);
+        ifStatus.generateColor = false;
+        ifStatus.generateImage = true;
         const rendering = currentIFThemeID === undefined;
         currentIFThemeID = ifThemeID;
         if (rendering) { contentArea.innerHTML = "" }
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
       }).catch((err) => {
-        generateImageFlag = false
         console.error("初始化剧本失败:", err);
         alert("初始化剧本失败");
         newFiction();
       }).finally(() => {
-        generateColorsFlag = false;
         sendBtn.disabled = false;
       });
     }
@@ -557,7 +572,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const history = await getHistoryByID(currentIFThemeID);
     if (!history) return;
     if (history.id !== currentIFThemeID) return;
-    if (selectOptionFlag.has(history.id)) return;
+    const ifStatus = getIFStatus(history.id);
+    if (ifStatus.selectOption) return;
     const target = e.target as HTMLElement;
     const deleteBtn = target.closest('.delete-this');
     if (!deleteBtn) return;
