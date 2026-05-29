@@ -6,15 +6,15 @@ import type { ResponseData, Payload } from '../../src/openai-api';
 import { createPrompt, keepPrompt, bePrompt, hePrompt, themePrompt } from './prompts';
 
 export interface Bindings {
-    TEXT_API_KEY?: string;
-    TEXT_MODEL?: string;
-    TEXT_BASE_URL?: string;
+    OPENAI_API_KEY?: string;
+    OPENAI_MODEL?: string;
+    OPENAI_BASE_URL?: string;
 }
 
 async function callApi<T>(env: Bindings, payload: Payload, extract: Function): Promise<T> {
-    const apiKey = env.TEXT_API_KEY;
-    const model = env.TEXT_MODEL;
-    const baseUrl = env.TEXT_BASE_URL;
+    const apiKey = env.OPENAI_API_KEY;
+    const model = env.OPENAI_MODEL;
+    const baseUrl = env.OPENAI_BASE_URL;
     if (!(apiKey && model && baseUrl)) throw new Error('Service is not enabled.');
     payload.model = model;
     const resp = await fetch(`${baseUrl}/chat/completions`, {
