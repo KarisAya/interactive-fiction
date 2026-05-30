@@ -23,6 +23,9 @@
   width: 100%;
   max-width: 840px;
 }
+.content-area {
+  position: relative;
+}
 
 .welcome-screen {
   flex: 1;
@@ -35,13 +38,82 @@
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 30px;
+  width: 100%;
 }
-
+.welcome-screen.loading {
+  position: absolute;
+}
 .welcome-text {
   position: relative;
 }
-.welcome-text.loading {
+.welcome-screen.loading .welcome-text {
   animation: breathing 2s infinite ease-in-out;
+}
+.old-text {
+  opacity: 1;
+}
+.new-text {
+  opacity: 0;
+}
+.welcome-screen .old-text,
+.welcome-screen.loading .new-text {
+  position: relative;
+  transition: all 0.6s linear;
+}
+.welcome-screen .new-text,
+.welcome-screen.loading .old-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.6s linear;
+}
+.welcome-screen.loading .old-text {
+  animation: erase-old 2s linear forwards;
+}
+.welcome-screen.loading .new-text {
+  animation: reveal-new 2s linear forwards;
+}
+@keyframes breathing {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes erase-old {
+  0% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  50% {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0;
+  }
+}
+
+@keyframes reveal-new {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  50% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
 }
 
 .content-area {
@@ -130,6 +202,7 @@
   padding: 0;
   margin: 0;
 }
+
 .input-area,
 .select-item,
 .select-back {

@@ -51,11 +51,16 @@ export type Payload = {
     model: string,
     messages: Message[],
     response_format?: ResponseFormat,
+    stream?: boolean
 }
 
 export type ResponseData = {
     title: string,
     content: string,
     options: string[]
-    incorrect: number
+}
+
+export type ResponseStreamChunk = {
+    key: "title" | "content" | "options"
+    data: string
 }

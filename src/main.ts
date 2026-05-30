@@ -6,6 +6,7 @@ import type { ExtendResp } from './core';
 import { ifSTART, ifKEEP, ifBE, ifHE, generateColorsByStory, viewImageById, generateImageByContent } from './core';
 import { creatModal, configTemplate, aboutTemplate } from './modal';
 
+
 const themeVars = [
   '--theme-color',
   '--text-color',
@@ -71,7 +72,6 @@ async function deleteHistoryByID(id: number): Promise<boolean> {
     return false;
   }
 }
-
 async function updateHistory(history: IFHistory): Promise<number | undefined> {
   try {
     const db = await dbPromise;
@@ -87,6 +87,7 @@ let currentIFThemeID: number | undefined = undefined;
 function createWelcomeScreen() {
   const welcomeScreen = document.createElement('div');
   welcomeScreen.className = 'welcome-screen';
+  welcomeScreen.id = 'welcomeScreen';
   const welcomeText = document.createElement('div');
   welcomeText.className = 'welcome-text';
   welcomeText.id = 'welcomeText';
@@ -186,9 +187,6 @@ function base64ToBlob(base64Data: string, mimeType: string = 'image/png'): Blob 
 }
 
 
-
-
-
 document.addEventListener('DOMContentLoaded', () => {
   // DOM 元素选取
   const sidebarEmpty = document.getElementById('sidebarEmpty') as HTMLDivElement;
@@ -268,11 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const new2History = await getHistoryByID(history.id) || newHistory;
           new2History.colors = colors;
           updateHistory(new2History);
-          if (currentIFThemeID === new2History.id) {
-            themeVars.forEach((varName, index) => {
-              document.documentElement.style.setProperty(varName, colors[index]);
-            });
-          }
+          if (currentIFThemeID !== new2History.id) return;
+          themeVars.forEach((varName, index) => {
+            document.documentElement.style.setProperty(varName, colors[index]);
+          });
         }).finally(() => {
           colorBtn.innerHTML = colorCardA;
           colorBtn.classList.remove('active');
@@ -420,27 +417,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   function renderResponse(resp: ExtendResp, ifContent: HTMLDivElement, history: SavedIFHistory, rendering: boolean) {
-    const [promptId, resp_data, markedContent] = resp;
-    const ifStatus = getIFStatus(history.id);
-    if (promptId) {
-      viewImage(promptId, async (image) => {
-        if (ifStatus.imageBlobURL) { URL.revokeObjectURL(ifStatus.imageBlobURL); }
-        ifStatus.imageBlobURL = URL.createObjectURL(base64ToBlob(image))
-        const newHistory = await getHistoryByID(history.id) || history;
-        newHistory.image = image;
-        updateHistory(newHistory);
-        if (newHistory.id !== currentIFThemeID) return;
-        mainContainer.style.setProperty('--bg-image', `url(${ifStatus.imageBlobURL!})`);
-        mainContainer.classList.add('has-image');
-      }).finally(() => { ifStatus.generateImage = false; });
-    } else { ifStatus.generateImage = false; }
+    const [resp_data, markedContent] = resp;
     ifContent.appendChild(createChapterTitle(resp_data.title));
     ifContent.innerHTML += markedContent;
     const options = resp_data.options;
     if (options.length > 0) {
       ifContent.dataset.options = JSON.stringify(options);
       const incorrect = resp_data.incorrect;
-      if (incorrect > 0) { ifContent.dataset.incorrect = incorrect.toString(); }
+      if (incorrect > -1) { ifContent.dataset.incorrect = incorrect.toString(); }
       history.messages.push(resp_data.content);
     }
     history.innerHTML += ifContent.outerHTML;
@@ -459,16 +443,25 @@ document.addEventListener('DOMContentLoaded', () => {
     ifStatus.selectOption = true;
     const ifContent = document.createElement('div');
     ifContent.className = 'if-content';
-    ifContent.innerHTML = `\
-    <button class="delete-this">
-      <i class="fa-solid fa-trash" ></i>
-    </button>
-    <p>${option}</p>`;
     history.messages.push(option);
+    const innerHTML = `\<p>${option}</p>`;
+    contentArea.appendChild(ifContent);
     const func = be ? ifBE : (history.he ? ifHE : ifKEEP);
-    func(history.messages).then((resp) => {
+    func(history.messages, (title: string, html: string) => {
+      if (currentIFThemeID !== history.id) return;
+      ifContent.innerHTML = innerHTML;
+      ifContent.appendChild(createChapterTitle(title));
+      ifContent.innerHTML += html;
+      mainContainer.scrollTop = mainContainer.scrollHeight;
+    }).then((resp) => {
+      ifContent.remove();
+      ifContent.innerHTML = `\
+      <button class="delete-this">
+        <i class="fa-solid fa-trash" ></i>
+      </button>
+      <p>${option}</p>`;
       renderResponse(resp, ifContent, history, ifThemeID === currentIFThemeID);
-    }).finally(() => { ifStatus.selectOption = false; });
+    }).catch(() => { ifContent.remove(); }).finally(() => { ifStatus.selectOption = false; });
   }
   handleResize();
   renderHistory()
@@ -494,39 +487,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = messageInput.value.trim();
     if (message.length < 1) return;
     if (currentIFThemeID !== undefined) {
+      const ifStatus = getIFStatus(currentIFThemeID);
+      if (ifStatus.selectOption) return;
       messageInput.value = "";
       messageInput.placeholder = message
       inputArea.classList.add('selected');
       selectOption(message, false, currentIFThemeID);
     } else {
       sendBtn.disabled = true;
-      const welcomeText = document.getElementById('welcomeText');
-      if (welcomeText) {
-        welcomeText.classList.add('loading');
-        for (const child of welcomeText.children) {
-          child.classList.add('loading');
-        }
-      }
-      ifSTART(message).then(async ([resp, colors]) => {
+      const welcomeScreen = document.getElementById('welcomeScreen');
+      welcomeScreen?.classList.add('loading');
+      const ifContent = document.createElement('div');
+      ifContent.className = 'if-content';
+      contentArea.appendChild(ifContent);
+      inputArea.classList.add('hidden');
+      ifSTART(message, (title: string, html: string) => {
+        if (currentIFThemeID !== undefined) return;
+        ifContent.innerHTML = ""
+        ifContent.appendChild(createChapterTitle(title));
+        ifContent.innerHTML += html;
+        mainContainer.scrollTop = mainContainer.scrollHeight;
+      }).then(async (resp) => {
+        welcomeScreen?.remove();
         messageInput.value = "";
-        const ifContent = document.createElement('div');
-        ifContent.className = 'if-content';
         const ifThemeID = await updateHistory({
           messages: [],
           image: null,
-          title: resp[1].title,
-          colors: colors,
+          title: resp[0].title,
+          colors: [],
           innerHTML: ""
         })
         if (!ifThemeID) return;
         const history = await getHistoryByID(ifThemeID)
         if (!history) return;
         const ifStatus = getIFStatus(ifThemeID);
-        ifStatus.generateColor = false;
+        ifStatus.generateColor = true;
+        generateColorsByStory(`${message}\n${resp[0].content}`).then(async (colors) => {
+          if (colors.length != 5) return;
+          const newHistory = await getHistoryByID(ifThemeID) || history;
+          newHistory.colors = colors;
+          updateHistory(newHistory);
+          if (currentIFThemeID !== ifThemeID) return;
+          themeVars.forEach((varName, index) => {
+            document.documentElement.style.setProperty(varName, colors[index]);
+          });
+        }).finally(() => {
+          ifStatus.generateColor = false
+        });
         ifStatus.generateImage = true;
+        generateImageByContent(resp[0].content).then((prompt_id) => {
+          viewImage(prompt_id, async (image) => {
+            const newHistory = await getHistoryByID(history.id) || history;
+            newHistory.image = image;
+            updateHistory(newHistory);
+            if (currentIFThemeID !== ifThemeID) return;
+            ifStatus.imageBlobURL = ifStatus.imageBlobURL || URL.createObjectURL(base64ToBlob(image))
+            mainContainer.style.setProperty('--bg-image', `url(${ifStatus.imageBlobURL!})`);
+            mainContainer.classList.add('has-image');
+          }).finally(() => { ifStatus.generateImage = false; })
+        }).catch(() => { ifStatus.generateImage = false; })
         const rendering = currentIFThemeID === undefined;
         currentIFThemeID = ifThemeID;
         if (rendering) { contentArea.innerHTML = "" }
+        ifContent.innerHTML = ""
         renderResponse(resp, ifContent, history, rendering);
         renderHistory();
       }).catch((err) => {
@@ -540,6 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   selectArea.onclick = (e) => {
     if (currentIFThemeID === undefined) return;
+    const ifStatus = getIFStatus(currentIFThemeID);
+    if (ifStatus.selectOption) return;
     const target = e.target as HTMLElement;
     let selectItem: HTMLElement | null;
     if (selectItem = target.closest('.select-item')) {
@@ -565,8 +590,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       })
     }
-
   };
+
   contentArea.onclick = async (e) => {
     if (currentIFThemeID === undefined) return;
     const history = await getHistoryByID(currentIFThemeID);
