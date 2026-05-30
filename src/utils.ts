@@ -84,7 +84,7 @@ export class OneLayerStreamJSONParser {
                 }
             }
             if (this.endVar) {
-                this.onChunk!(this.currentKey, this.currentValChunk);
+                await this.onChunk!(this.currentKey, this.currentValChunk);
                 this.currentValChunk = "";
                 this.currentKey = "";
                 this.endVar = false;
@@ -92,7 +92,7 @@ export class OneLayerStreamJSONParser {
             }
         }
         if (this.currentKey && this.currentValChunk) {
-            this.onChunk!(this.currentKey, this.currentValChunk);
+            await this.onChunk!(this.currentKey, this.currentValChunk);
             this.currentValChunk = "";
         }
     }

@@ -449,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const func = be ? ifBE : (history.he ? ifHE : ifKEEP);
     func(history.messages, (title: string, html: string) => {
       if (currentIFThemeID !== history.id) return;
+      if (!contentArea.contains(ifContent)) { contentArea.appendChild(ifContent); }
       ifContent.innerHTML = innerHTML;
       ifContent.appendChild(createChapterTitle(title));
       ifContent.innerHTML += html;
@@ -503,6 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inputArea.classList.add('hidden');
       ifSTART(message, (title: string, html: string) => {
         if (currentIFThemeID !== undefined) return;
+        if (!contentArea.contains(ifContent)) { contentArea.appendChild(ifContent); }
         ifContent.innerHTML = ""
         ifContent.appendChild(createChapterTitle(title));
         ifContent.innerHTML += html;

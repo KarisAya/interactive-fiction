@@ -12,7 +12,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from .config import ComfyUIConfig, OpenAIConfig, Config
 from .prompts import CREATE_PROMPT, KEEP_PROMPT, BE_PROMPT, HE_PROMPT, THEME_PROMPT, IMAGE_PROMPT
@@ -123,6 +123,26 @@ class OpenAIAPI:
             raise ValueError(f"API returned an invalid response: {resp.text}")
         return message
 
+    async def call_api_stream(self, client: httpx.AsyncClient, payload: dict):
+        payload["stream"] = True
+        async with client.stream("POST", self.url, headers=self.headers, json=payload) as response:
+            if response.status_code != 200:
+                error_text = await response.aread()
+                raise RuntimeError(f"API error ({response.status_code}): {error_text.decode('utf-8')}")
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                if line.startswith("data:"):
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        content = json.loads(data_str)["choices"][0]["delta"]["content"]
+                        if content:
+                            yield f"data: {json.dumps(content)}\n\n"
+                    except (json.JSONDecodeError, KeyError, IndexError):
+                        continue
+
 
 class Server:
     def __init__(self, config_file: str):
@@ -164,14 +184,13 @@ class Server:
 
     async def if_start(self, request: Request):
         content = await request.body()
+        if not content:
+            raise HTTPException(status_code=400, detail="Request body cannot be empty.")
         content = content.decode("utf-8")
         payload = self.openai.buildpayload(CREATE_PROMPT, content)
         payload["response_format"] = {"type": "json_object"}
         try:
-            message = await self.openai.call_api(self.client, payload)
-            resp_data = json.loads(message["content"])
-            resp_data["incorrect"] = -1
-            return JSONResponse(content=resp_data)
+            return StreamingResponse(self.openai.call_api_stream(self.client, payload), media_type="text/event-stream")
         except Exception as err:
             logger.exception(err)
             raise HTTPException(status_code=500, detail=str(err))
@@ -179,44 +198,36 @@ class Server:
     async def if_keep(self, request: Request):
         content = await request.body()
         if not content:
-            raise HTTPException(status_code=400, detail='The "content" field is missing in the request body.')
+            raise HTTPException(status_code=400, detail="Request body cannot be empty.")
         content = content.decode("utf-8")
-        incorrect = random.randint(0, 2)
         payload = self.openai.buildpayload(KEEP_PROMPT, content)
         payload["response_format"] = {"type": "json_object"}
         try:
-            message = await self.openai.call_api(self.client, payload)
-            resp_data = json.loads(message["content"])
-            resp_data["incorrect"] = incorrect
-            if "options" not in resp_data or not isinstance(resp_data["options"], list):
-                resp_data["options"] = []
-            options_list = resp_data["options"]
-            if len(options_list) == 0:
-                resp_data["incorrect"] = -1
-            else:
-                badopt = options_list.pop()
-                options_list.insert(incorrect, badopt)
-            return JSONResponse(content=resp_data)
+            return StreamingResponse(self.openai.call_api_stream(self.client, payload), media_type="text/event-stream")
         except Exception as err:
             raise HTTPException(status_code=500, detail=str(err))
 
+    # 3. 改为流式
     async def if_be(self, request: Request):
         content = await request.body()
+        if not content:
+            raise HTTPException(status_code=400, detail="Request body cannot be empty.")
         content = content.decode("utf-8")
         payload = self.openai.buildpayload(BE_PROMPT, content)
         try:
-            message = await self.openai.call_api(self.client, payload)
-            return PlainTextResponse(content=message["content"])
+            return StreamingResponse(self.openai.call_api_stream(self.client, payload), media_type="text/event-stream")
         except Exception as err:
             raise HTTPException(status_code=500, detail=str(err))
 
+    # 4. 改为流式
     async def if_he(self, request: Request):
         content = await request.body()
+        if not content:
+            raise HTTPException(status_code=400, detail="Request body cannot be empty.")
         content = content.decode("utf-8")
         payload = self.openai.buildpayload(HE_PROMPT, content)
         try:
-            message = await self.openai.call_api(self.client, payload)
-            return PlainTextResponse(content=message["content"])
+            return StreamingResponse(self.openai.call_api_stream(self.client, payload), media_type="text/event-stream")
         except Exception as err:
             raise HTTPException(status_code=500, detail=str(err))
 

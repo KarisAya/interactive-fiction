@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import type { ResponseData, ResponseStreamChunk } from './openai-api';
+import type { ResponseData } from './openai-api';
 import { OneLayerStreamJSONParser, streamReader } from './utils';
 
 const renderer = new marked.Renderer();
@@ -91,7 +91,9 @@ async function streamJsonParse(
                 options += chunk;
         }
     }
-    await streamReader(reader, parser.write)
+    await streamReader(reader, async (chunk) => {
+        await parser.write(JSON.parse(chunk));
+    })
     return {
         title: JSON.parse(title),
         content: JSON.parse(content),
@@ -159,7 +161,7 @@ export async function ifBE(
         incorrect: -1
     }
     await streamReader(reader, async (chunk) => {
-        respEx.content += chunk
+        respEx.content += JSON.parse(chunk)
         const markedContent = await marked.parse(respEx.content, { renderer });
         onParseUpdate(respEx.title, markedContent)
     })
@@ -186,7 +188,7 @@ export async function ifHE(
         incorrect: -1
     }
     await streamReader(reader, async (chunk) => {
-        respEx.content += chunk
+        respEx.content += JSON.parse(chunk)
         const markedContent = await marked.parse(respEx.content, { renderer });
         onParseUpdate(respEx.title, markedContent)
     })

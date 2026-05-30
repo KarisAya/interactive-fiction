@@ -65,7 +65,7 @@ function streamRespFrom(
     return async (stream: SSEStreamingApi) => {
         await streamReader(reader, async (arg0) => {
             const content = JSON.parse(arg0).choices?.[0]?.delta?.content;
-            if (content) { await stream.writeSSE({ data: content }); }
+            if (content) { await stream.writeSSE({ data: JSON.stringify(content) }); }
         })
     }
 }

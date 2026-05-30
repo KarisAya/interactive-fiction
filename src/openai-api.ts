@@ -59,8 +59,3 @@ export type ResponseData = {
     content: string,
     options: string[]
 }
-
-export type ResponseStreamChunk = {
-    key: "title" | "content" | "options"
-    data: string
-}
